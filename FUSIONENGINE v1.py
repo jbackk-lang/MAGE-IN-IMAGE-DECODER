@@ -1,3 +1,9 @@
+try:
+    from i2d_core import Detection
+except ImportError:
+    from i2d_core_defectscanner_v2 import Detection
+
+
 def fusion_engine(frames, detections, block_size=16):
     """
     FusionEngine v1 – łączenie wyników modułów I²D

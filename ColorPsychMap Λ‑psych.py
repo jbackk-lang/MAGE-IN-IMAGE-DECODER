@@ -1,3 +1,7 @@
+import numpy as np
+from i2d_core import Detection
+
+
 def hue_to_emotion(hue_deg):
     """
     Prosta mapa Hue -> emocja (Λ-psych)

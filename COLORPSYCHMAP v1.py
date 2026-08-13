@@ -1,3 +1,8 @@
+import cv2
+import numpy as np
+from i2d_core import Detection
+
+
 def detect_color(frames,
                  block_size=16,
                  thr_hue=15.0,

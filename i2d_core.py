@@ -121,6 +121,8 @@ def detect_defects(frames):
         for y in range(0, h, block):
             for x in range(0, w, block):
                 region = M[y:y+block, x:x+block]
+                if region.size == 0:  # POPRAWKA: bloki na krawędzi (h/w niepodzielne przez block)
+                    continue
                 strength = np.mean(region)
 
                 if strength > 25:  # próg defektu
@@ -142,13 +144,17 @@ def detect_spectral(frames):
     for f in frames:
         F = np.abs(f.F)
         h, w = F.shape
+        # POPRAWKA WYDAJNOŚCI: np.mean(F) liczone raz na klatkę zamiast raz na
+        # każdy blok (dla 640x480 i block=32 to ok. 300x mniej przeliczeń
+        # średniej po całej macierzy F na klatkę).
+        global_mean = np.mean(F)
 
         for y in range(0, h, block):
             for x in range(0, w, block):
                 region = F[y:y+block, x:x+block]
                 strength = np.mean(region)
 
-                if strength > np.mean(F) * 3:  # anomalia widmowa
+                if strength > global_mean * 3:  # anomalia widmowa
                     detections.append(
                         Detection(f.id, f.time, x, y, "spectral", strength, "F",
                                   "anomalia widmowa / modulacja")

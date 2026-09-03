@@ -47,6 +47,19 @@ def load_video(path):
     cap.release()
     return frames
 
+
+def load_image(path):
+    """Wczytuje pojedynczy obraz statyczny jako jednoelementową listę Frame.
+
+    (Przeniesione tutaj z i2d_core_defectscanner_v2.py — ten plik jest teraz
+    cienkim re-eksportem tego modułu, więc funkcja ma jedno miejsce
+    zamieszkania zamiast dwóch niezależnych kopii.)
+    """
+    raw = cv2.imread(path)
+    if raw is None:
+        raise FileNotFoundError(f"Nie można wczytać obrazu: {path}")
+    return [Frame(0, 0.0, raw)]
+
 # ============================
 #   LAYER SPLITTER
 # ============================
@@ -77,28 +90,27 @@ def split_layers(frames):
 #   TWIST DETECTOR (skręt)
 # ============================
 
-def detect_twist(frames):
+def detect_twist(frames, block_size=16, threshold=20):
     detections = []
-    block = 16
 
     for f in frames:
         L = f.L
         h, w = L.shape
 
-        for y in range(0, h, block):
-            for x in range(0, w, block):
-                region = L[y:y+block, x:x+block]
+        for y in range(0, h, block_size):
+            for x in range(0, w, block_size):
+                region = L[y:y+block_size, x:x+block_size]
                 if region.size == 0:
                     continue
 
-                left = np.mean(region[:, :block//2])
-                right = np.mean(region[:, block//2:])
-                top = np.mean(region[:block//2, :])
-                bottom = np.mean(region[block//2:, :])
+                left = np.mean(region[:, :block_size//2])
+                right = np.mean(region[:, block_size//2:])
+                top = np.mean(region[:block_size//2, :])
+                bottom = np.mean(region[block_size//2:, :])
 
                 T = abs(left - right) + abs(top - bottom)
 
-                if T > 20:  # próg skrętu
+                if T > threshold:
                     detections.append(
                         Detection(f.id, f.time, x, y, "twist", T, "L",
                                   "lokalna asymetria (skręt)")
@@ -110,25 +122,39 @@ def detect_twist(frames):
 #   DEFECT SCANNER (ρ)
 # ============================
 
-def detect_defects(frames):
+def detect_defects(frames, block_size=16):
+    """
+    DefectScanner v2 — wykrywa nagłe zmiany ruchu (defekty, zniknięcia,
+    przełączenia).
+
+    POPRAWKA: próg był wcześniej stałą liczbą (25), niezależną od
+    faktycznego poziomu szumu/ruchu w danym wideo. Teraz używany jest próg
+    adaptacyjny mean(M) + 2*std(M) (z dolnym ograniczeniem 10.0) — dokładnie
+    ta sama logika, która wcześniej istniała TYLKO w
+    i2d_core_defectscanner_v2.py (drugiej, niezależnej kopii tego modułu).
+    Ten plik jest teraz jedynym miejscem, gdzie ta logika żyje —
+    i2d_core_defectscanner_v2.py deleguje tutaj.
+    """
     detections = []
-    block = 16
 
     for f in frames:
         M = f.M
+        adaptive_threshold = float(np.mean(M) + 2.0 * np.std(M))
+        adaptive_threshold = max(adaptive_threshold, 10.0)  # minimum sensowny próg
+
         h, w = M.shape
 
-        for y in range(0, h, block):
-            for x in range(0, w, block):
-                region = M[y:y+block, x:x+block]
-                if region.size == 0:  # POPRAWKA: bloki na krawędzi (h/w niepodzielne przez block)
+        for y in range(0, h, block_size):
+            for x in range(0, w, block_size):
+                region = M[y:y+block_size, x:x+block_size]
+                if region.size == 0:  # bloki na krawędzi (h/w niepodzielne przez block)
                     continue
-                strength = np.mean(region)
+                strength = float(np.mean(region))
 
-                if strength > 25:  # próg defektu
+                if strength > adaptive_threshold:
                     detections.append(
                         Detection(f.id, f.time, x, y, "defect", strength, "M",
-                                  "nagła zmiana (defekt)")
+                                  "nagła zmiana ruchu (defekt)")
                     )
 
     return detections
@@ -137,41 +163,63 @@ def detect_defects(frames):
 #   SPECTRAL OVERLAY DETECTOR
 # ============================
 
-def detect_spectral(frames):
-    detections = []
-    block = 32
+def detect_spectral(frames, block_size=32, thr_multiplier=3.0):
+    """
+    POPRAWKA: ta funkcja była trzecią, niezależną kopią detekcji widmowej
+    (obok i2d_core_defectscanner_v2.py i SPECTRAL OVERLAY DETECTOR v2.py) i
+    — inaczej niż spectral_overlay_detector_v2.py — nie wykluczała składowej
+    DC z widma FFT. Składowa DC ma w naturalnych obrazach amplitudę o rzędy
+    wielkości większą niż reszta widma, więc ta funkcja zgłaszała fałszywy
+    "spectral_anomaly" na centralnym bloku niemal każdej klatki niezależnie
+    od faktycznej treści obrazu.
 
-    for f in frames:
-        F = np.abs(f.F)
-        h, w = F.shape
-        # POPRAWKA WYDAJNOŚCI: np.mean(F) liczone raz na klatkę zamiast raz na
-        # każdy blok (dla 640x480 i block=32 to ok. 300x mniej przeliczeń
-        # średniej po całej macierzy F na klatkę).
-        global_mean = np.mean(F)
-
-        for y in range(0, h, block):
-            for x in range(0, w, block):
-                region = F[y:y+block, x:x+block]
-                strength = np.mean(region)
-
-                if strength > global_mean * 3:  # anomalia widmowa
-                    detections.append(
-                        Detection(f.id, f.time, x, y, "spectral", strength, "F",
-                                  "anomalia widmowa / modulacja")
-                    )
-
-    return detections
+    Zamiast utrzymywać osobną, gorszą kopię tej samej logiki, deleguje teraz
+    do jedynej prawdziwej, przetestowanej implementacji w
+    spectral_overlay_detector_v2.py (z wykluczeniem DC). `block_size` i
+    `thr_multiplier` zachowane dla wstecznej zgodności sygnatury; reszta
+    progów (linie/pierścień/pik) korzysta z domyślnych wartości tamtej
+    funkcji.
+    """
+    from spectral_overlay_detector_v2 import detect_spectral_v2
+    return detect_spectral_v2(frames, block_size=block_size, thr_multiplier=thr_multiplier)
 
 # ============================
 #   PIPELINE I²D
 # ============================
 
-def run_i2d(path):
-    frames = load_video(path)
+def run_i2d(path, mode="video"):
+    """
+    Główny pipeline I²D.
+
+    Parametry:
+        path  : ścieżka do pliku wideo lub obrazu
+        mode  : "video" (domyślnie) lub "image" dla obrazów statycznych PNG/JPG
+
+    Zwraca:
+        lista Detection ze WSZYSTKICH pięciu modułów (twist, defect,
+        spectral, rhythm, color) — POPRAWKA: wcześniej run_i2d() łączył
+        tylko twist+defect+spectral, mimo że README (sekcja 8️⃣ FusionEngine)
+        opisuje fuzję jako łączącą "twist, defect, rhythm, color, spectral".
+        RhythmAnalyzer i ColorPsychMap Λ-psych nigdy nie trafiały do
+        FusionEngine/ReportEngine, chyba że ktoś ręcznie dołożył ich wyniki
+        do listy przed wywołaniem fusion_engine(). Importy modułów rhythm/
+        color są lokalne (wewnątrz funkcji), żeby uniknąć cyklicznego
+        importu — oba te moduły robią `from i2d_core import Detection`.
+    """
+    if mode == "image":
+        frames = load_image(path)
+    else:
+        frames = load_video(path)
+
     split_layers(frames)
+
+    from rhythm_analyzer_v1 import detect_rhythm
+    from colorpsychmap_lambda_psych import detect_color_emotion
 
     twist = detect_twist(frames)
     defects = detect_defects(frames)
     spectral = detect_spectral(frames)
+    rhythm = detect_rhythm(frames)
+    color = detect_color_emotion(frames)
 
-    return twist + defects + spectral
+    return twist + defects + spectral + rhythm + color

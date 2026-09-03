@@ -412,6 +412,29 @@ analiza kwarków (piki rezonansowe)
 
 ---
 
+## 🔧 Wymagania i instalacja
+
+```
+pip install -r requirements.txt
+```
+
+Wymaga `opencv-python` i `numpy` (Python 3.8+).
+
+## 🧪 Testy
+
+```
+pip install pytest
+pytest tests/ -v
+```
+
+Pokrycie: import każdego kanonicznego modułu, tożsamość obiektu dla
+wszystkich plików-aliasów (patrz punkt 11 niżej), pozytywna/negatywna
+kontrola DC-bias w detekcji widmowej, próg adaptacyjny DefectScannera,
+okresowość RhythmAnalyzera dla L/V/M, oraz to, że `run_i2d()` faktycznie
+woła wszystkie 5 modułów.
+
+---
+
 ## 🛠️ Status poprawek (sprawdzone i naprawione)
 
 Podczas przeglądu każdy moduł został realnie uruchomiony na testowych
@@ -458,18 +481,67 @@ klatkach (nie tylko przeczytany). Znaleziono i naprawiono:
 6. **Niezgodność README ↔ kod w tabeli emocji koloru** — patrz sekcja 6️⃣
    wyżej.
 
+7. **DC-bias naprawiony tylko w jednej z trzech kopii tej samej logiki.**
+   Poprawkę z punktu 2 miał wyłącznie `SPECTRAL OVERLAY DETECTOR v2.py`.
+   `i2d_core.py::detect_spectral()` i `i2d_core_defectscanner_v2.py::detect_spectral()`
+   były niezależnymi kopiami tej samej detekcji widmowej i nadal nie
+   wykluczały składowej DC — więc pipeline `run_i2d()` (który woła
+   `i2d_core.py::detect_spectral()`, nie wersję v2) dalej dawałby fałszywe
+   `spectral_anomaly` na centralnym bloku niemal każdej klatki.
+   `i2d_core.py::detect_spectral()` deleguje teraz do jedynej prawdziwej
+   implementacji w `spectral_overlay_detector_v2.py` zamiast utrzymywać
+   osobną kopię.
+
+8. **`run_i2d()` łączył tylko 3 z 5 modułów obiecanych w opisie
+   FusionEngine (punkt 8️⃣).** `detect_rhythm` (RhythmAnalyzer) i
+   `detect_color_emotion` (ColorPsychMap Λ-psych) nigdy nie trafiały do
+   listy detekcji przekazywanej do `fusion_engine()`/`report_engine()` —
+   FusionEngine w praktyce nigdy nie widział rytmu ani koloru, mimo że
+   README opisuje fuzję jako łączącą "twist, defect, rhythm, color,
+   spectral". `run_i2d()` woła teraz wszystkich pięć detektorów.
+   Zweryfikowano regresyjnie: `tests/test_i2d_core.py::test_run_i2d_image_mode_includes_color_module`.
+
+9. **`i2d_core.py::detect_defects()` miał sztywny próg (25), inny niż
+   `i2d_core_defectscanner_v2.py::detect_defects()` (próg adaptacyjny
+   `mean(M) + 2*std(M)`, min. 10.0)** — dwie różnie działające wersje
+   "tego samego" detektora, żadna wskazówka, która jest właściwa.
+   Ujednolicono na wersję adaptacyjną w `i2d_core.py`.
+
+10. **`RHYTHM ANALYZER v1.py` — okresowość liczona wcześniej tylko dla
+    jasności (L).** `history_V`/`history_M` były zbierane (od poprawki nr 3
+    wyżej), ale nigdy nieużywane do wykrywania okresowości koloru/ruchu —
+    tylko jasności. Dopisano tę samą analizę autokorelacyjną dla V i M
+    (nowe typy detekcji: `rhythm_periodic_color`, `rhythm_periodic_motion`).
+
+11. **Zduplikowane moduły → kanoniczna wersja + cienki re-eksport.**
+    Zamiast dalej utrzymywać niezależne kopie (`i2d_core.py` vs
+    `i2d_core_defectscanner_v2.py`, `FUSIONENGINE v1.py` vs
+    `fusionengine_v1.py`, oraz pliki ze spacjami vs ich brak), każdy
+    moduł ma teraz JEDNĄ kanoniczną, importowalną wersję w snake_case —
+    pozostałe pliki to cienkie re-eksporty (`from <kanoniczny_moduł>
+    import ...`), pilnowane testami asercji **tożsamości obiektu**
+    (`is`, nie tylko równy wynik — patrz `tests/test_i2d_core.py`), żeby
+    nikt przypadkiem nie wkleił z powrotem świeżej, niezależnej kopii.
+    Kanoniczne moduły: `i2d_core.py`, `fusionengine_v1.py`,
+    `reportengine_v1.py`, `rhythm_analyzer_v1.py`, `colorpsychmap_v1.py`,
+    `colorpsychmap_lambda_psych.py`, `spectral_overlay_detector_v2.py`.
+    Pliki ze spacjami w nazwie (`"COLORPSYCHMAP v1.py"` itd.) oraz
+    `i2d_core_defectscanner_v2.py`/`"FUSIONENGINE v1.py"` zostały —
+    usuwanie ich wymagałoby przepisania linków w tym README i na stronie
+    dokumentacji, więc na razie działają jako trwałe aliasy.
+
+12. **Brak `requirements.txt` i brak testów w repo**, mimo że README
+    opisuje realne uruchomienia weryfikacyjne ("tak jak w testach
+    powyżej"). Dodano `requirements.txt` (opencv-python, numpy) oraz
+    `tests/test_i2d_core.py` (pytest) pokrywający punkty 7–11 wyżej plus
+    pozytywną/negatywną kontrolę dla DC-bias.
+
 ### Nienaprawione, warte uwagi
 
-- **Nazwy plików ze spacjami/znakami specjalnymi** (`"FUSIONENGINE v1.py"`,
-  `"COLORPSYCHMAP v1.py"`, `"ColorPsychMap Λ‑psych.py"`, `"RHYTHM ANALYZER
-  v1.py"`, `"SPECTRAL OVERLAY DETECTOR v2.py"`) nie da się zaimportować
-  standardowym `import nazwa_modułu` — trzeba użyć `importlib` z podaniem
-  ścieżki pliku (tak jak w testach powyżej). To wprost przeczy README
-  ("każdy moduł działa niezależnie"). Rozważ zmianę nazw na
-  `snake_case.py` (repo już ma taki wzorzec w `fusionengine_v1.py` i
-  `i2d_core_defectscanner_v2.py`).
-- **Dublujące się, niejednoznacznie nazwane wersje modułów**
-  (`i2d_core.py` vs `i2d_core_defectscanner_v2.py`, `FUSIONENGINE v1.py`
-  vs `fusionengine_v1.py`) — nie jest jasne, z której wersji ma korzystać
-  `FusionEngine`/`ReportEngine`, ani która jest "aktualna". Warto dodać
-  jedno zdanie w README wskazujące kanoniczną wersję każdego modułu.
+- Import w `run_i2d()` dla `detect_rhythm`/`detect_color_emotion` jest
+  celowo lokalny (wewnątrz funkcji), żeby uniknąć cyklicznego importu z
+  `i2d_core` — jeśli `rhythm_analyzer_v1.py`/`colorpsychmap_lambda_psych.py`
+  kiedyś zaczną importować coś więcej z `i2d_core` niż samą klasę
+  `Detection`, warto to zrewidować.
+- Realtime I²D (punkt 🔟) i moduł GPU/CUDA pozostają na etapie opisu w
+  README — nie ma jeszcze odpowiadającego im pliku w repo.

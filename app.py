@@ -34,6 +34,8 @@ from rhythm_analyzer_v1 import detect_rhythm
 from colorpsychmap_lambda_psych import detect_color_emotion
 from meta_dynamics_v1 import compute_reference_thresholds, compute_video_meta_states
 from contour_curvature import compute_reference_threshold, extract_contours, contour_curvatures
+from stereo_overlay import make_overlays
+from anomaly_similarity import compare_anomaly_similarity
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # 20MB, demo/dashboard, nie produkcja
@@ -359,6 +361,74 @@ INDEX_TEMPLATE = BASE_STYLE + """
     <span class="badge {{ m.status }}">{{ 'stabilny' if m.status == 'stable' else 'eksperymentalny' }}</span>
   </a>
   {% endfor %}
+  <a class="card" href="{{ url_for('stereo_page') }}">
+    <h3>Stereo — szybkie nakładki</h3>
+    <p>Dwa obrazy: anaglif i poglądowa mapa przesunięć.</p>
+    <span class="badge experimental">podgląd, nie pomiar głębokości</span>
+  </a>
+  <a class="card" href="{{ url_for('similarity_page') }}">
+    <h3>Podobieństwo anomalii — szybki test</h3>
+    <p>Porównaj własny obraz z przykładem prawidłowym i anomalnym.</p>
+    <span class="badge experimental">heurystyka, nie diagnoza</span>
+  </a>
+</div>
+"""
+
+SIMILARITY_TEMPLATE = BASE_STYLE + """
+<header>
+  <a class="back" href="{{ url_for('index') }}">&larr; wszystkie moduły</a>
+  <h1>Podobieństwo do znanej anomalii</h1>
+  <p>Minimalne porównanie trzech obrazów tej samej sceny.</p>
+</header>
+<div class="module-page">
+  <div class="status-note">Wynik mówi tylko, do którego przykładu obraz jest bardziej podobny.
+    Liczby nie są prawdopodobieństwem usterki. Użyj tego samego kadru, oświetlenia
+    i rozdzielczości; niewielka anomalia może zginąć w tle.</div>
+  <form class="upload" method="post" enctype="multipart/form-data">
+    <label>Obraz badany: <input type="file" name="query" accept="image/*" required></label><br><br>
+    <label>Przykład prawidłowy: <input type="file" name="normal" accept="image/*" required></label><br><br>
+    <label>Przykład anomalny: <input type="file" name="anomaly" accept="image/*" required></label><br><br>
+    <input type="submit" value="Porównaj podobieństwo">
+  </form>
+  {% if error %}<div class="status-note">Błąd: {{ error }}</div>{% endif %}
+  {% if verdict %}
+    <div class="stats"><strong>{{ verdict }}</strong><br>
+      Podobieństwo do prawidłowego: {{ normal_score }} &nbsp;|&nbsp;
+      do anomalii: {{ anomaly_score }} &nbsp;|&nbsp; różnica: {{ margin }}<br>
+      Nakładka różnic względem bliższego przykładu: {{ nearest }}.
+    </div>
+    <div class="compare">
+      <figure><img src="{{ query_image }}"><figcaption>Obraz badany</figcaption></figure>
+      <figure><img src="{{ overlay }}"><figcaption>Poglądowa nakładka różnic</figcaption></figure>
+    </div>
+  {% endif %}
+</div>
+"""
+
+STEREO_TEMPLATE = BASE_STYLE + """
+<header>
+  <a class="back" href="{{ url_for('index') }}">&larr; wszystkie moduły</a>
+  <h1>Stereo — szybkie nakładki</h1>
+  <p>Para obrazów tej samej sceny, najlepiej po rektyfikacji.</p>
+</header>
+<div class="module-page">
+  <div class="status-note">To podgląd anaglifowy i disparycja względna.
+    Bez kalibracji kamer nie jest to głębokość w metrach ani detekcja anomalii.</div>
+  <form class="upload" method="post" enctype="multipart/form-data">
+    <label>Lewy obraz: <input type="file" name="left" accept="image/*" required></label><br><br>
+    <label>Prawy obraz: <input type="file" name="right" accept="image/*" required></label><br><br>
+    <input type="submit" value="Pokaż nakładki">
+  </form>
+  {% if error %}<div class="status-note">Błąd: {{ error }}</div>{% endif %}
+  {% if anaglyph %}
+  <div class="compare">
+    <figure><img src="{{ anaglyph }}"><figcaption>Anaglif czerwono-cyjanowy</figcaption></figure>
+    <figure><img src="{{ overlay }}"><figcaption>Mapa disparycji na lewym obrazie</figcaption></figure>
+    <figure><img src="{{ color }}"><figcaption>Kolorowe przesunięcie (tylko poprawne piksele)</figcaption></figure>
+  </div>
+  <div class="stats">Udział pikseli z oszacowanym przesunięciem: {{ fraction }}.
+    Bez kalibracji brak odległości w metrach.</div>
+  {% endif %}
 </div>
 """
 
@@ -405,6 +475,66 @@ MODULE_TEMPLATE = BASE_STYLE + """
 @app.route("/")
 def index():
     return render_template_string(INDEX_TEMPLATE, modules=MODULES)
+
+
+@app.route("/stereo", methods=["GET", "POST"])
+def stereo_page():
+    view = {"anaglyph": None, "overlay": None, "color": None,
+            "fraction": None, "error": None}
+    if request.method == "POST":
+        try:
+            images = []
+            for key in ("left", "right"):
+                upload = request.files.get(key)
+                if not upload or not upload.filename:
+                    raise ValueError("Wybierz lewy i prawy obraz")
+                image = cv2.imdecode(np.frombuffer(upload.read(), dtype=np.uint8), cv2.IMREAD_COLOR)
+                if image is None:
+                    raise ValueError(f"Nie można odczytać obrazu: {key}")
+                if image.shape[0] * image.shape[1] > UPLOAD_MAX_TOTAL_PIXELS:
+                    raise ValueError("Obraz przekracza limit 12 mln pikseli")
+                images.append(image)
+            result = make_overlays(*images)
+            view.update(
+                anaglyph=encode_b64(result["anaglyph"]),
+                overlay=encode_b64(result["disparity_overlay"]),
+                color=encode_b64(result["disparity_color"]),
+                fraction=f"{result['valid_fraction']:.1%}",
+            )
+        except (ValueError, cv2.error) as exc:
+            view["error"] = str(exc)
+    return render_template_string(STEREO_TEMPLATE, **view)
+
+
+@app.route("/similarity", methods=["GET", "POST"])
+def similarity_page():
+    view = {"verdict": None, "error": None}
+    if request.method == "POST":
+        try:
+            images = []
+            for key in ("query", "normal", "anomaly"):
+                upload = request.files.get(key)
+                if not upload or not upload.filename:
+                    raise ValueError("Wybierz trzy obrazy: badany, prawidłowy i anomalny")
+                image = cv2.imdecode(np.frombuffer(upload.read(), dtype=np.uint8), cv2.IMREAD_COLOR)
+                if image is None:
+                    raise ValueError(f"Nie można odczytać obrazu: {key}")
+                if image.shape[0] * image.shape[1] > UPLOAD_MAX_TOTAL_PIXELS:
+                    raise ValueError("Obraz przekracza limit 12 mln pikseli")
+                images.append(image)
+            result = compare_anomaly_similarity(*images)
+            view.update(
+                verdict=result["verdict"],
+                normal_score=f"{result['normal_similarity']:.3f}",
+                anomaly_score=f"{result['anomaly_similarity']:.3f}",
+                margin=f"{abs(result['margin']):.3f}",
+                nearest="anomalnego" if result["nearest_reference"] == "anomaly" else "prawidłowego",
+                query_image=encode_b64(images[0]),
+                overlay=encode_b64(result["difference_overlay"]),
+            )
+        except (ValueError, cv2.error) as exc:
+            view["error"] = str(exc)
+    return render_template_string(SIMILARITY_TEMPLATE, **view)
 
 
 @app.route("/demo/<name>", methods=["GET", "POST"])

@@ -213,6 +213,62 @@ Główny interfejs `run_i2d()`
 nadal wczytuje cały film do pamięci, więc długie nagrania wymagają
 partiowego pipeline'u w przyszłej wersji.
 
+### Szybkie nakładki stereo
+
+Na stronie `/stereo` wgraj osobno lewy i prawy obraz tej samej sceny.
+Dashboard pokaże anaglif czerwono-cyjanowy i kolorową nakładkę
+disparycji. Obrazy muszą mieć te same wymiary i najlepiej być po
+rektyfikacji; bez kalibracji aparatów mapa **nie podaje odległości w
+metrach**. To podgląd, nie zwalidowany detektor defektów.
+
+To samo bez GUI:
+
+```
+python stereo_overlay.py lewy.png prawy.png --output-dir stereo_output
+```
+
+### Minimalna predykcja przez podobieństwo
+
+Na stronie `/similarity` można wgrać trzy obrazy: badany, prawidłowy i
+anomalny przykład. Moduł `anomaly_similarity.py` porównuje z góry ustalone
+cechy koloru, krawędzi i układu przestrzennego. Zwraca podobieństwo do obu
+przykładów, wskazuje bliższy i pokazuje poglądową nakładkę różnic. Jeśli
+różnica podobieństw jest mała, odpowiada `NIEROZSTRZYGNIĘTE`.
+
+To **nie jest prawdopodobieństwo anomalii ani zwalidowana diagnoza**.
+Obrazy muszą mieć tę samą rozdzielczość i porównywalny kadr oraz
+oświetlenie. Mała lokalna wada może zostać zdominowana przez wspólne tło;
+do wiarygodnej oceny potrzeba oznaczonych, niezależnych przykładów.
+
+### Laboratorium porównań CDnet 2014
+
+`cdnet_benchmark.py` porównuje na tych samych klatkach trzy maski:
+`DefectScanner`, `DefectScanner + TwistDetector` przez `FusionEngine`
+oraz klasyczny MOG2. Tylko te dwie rodziny I²D mają w tym porównaniu
+współrzędne przestrzenne zgodne z maskami CDnet. Kolor, rytm, widmo i
+opisowe Λ/τ NIE są domyślnie zaliczane jako pikselowa maska ruchu.
+
+Mały, oficjalny przykład do uruchomienia lokalnie (dane są ignorowane
+przez Git):
+
+```
+python download_cdnet.py pedestrians
+python cdnet_benchmark.py data/cdnet2014/baseline/pedestrians --output benchmark_reports/pedestrians.json
+```
+
+Źródło i opis etykiet: https://changedetection.net/dataset2014/ .
+Skrypt akceptuje także `highway` i `fountain01`. Dla każdej sekwencji
+raportuje precision, recall, F1, fałszywe alarmy i czas na klatkę.
+Do oceny trafiają tylko klatki z `temporalROI.txt` oraz piksele z
+etykietami 0 (tło) lub 255 (ruch), wewnątrz `ROI.bmp`; etykiety 50,
+85 i 170 są pomijane. `--max-frames N` służy tylko do próby technicznej
+i oznacza wynik jako `PARTIAL`. Jedna sekwencja pokazuje działanie kodu,
+ale nie dowodzi przewagi ani uogólnienia. CDnet mierzy wykrywanie
+ruchu/tła, nie wykrywanie manipulacji, intencji lub anomalii Ped2.
+Rzeczywisty pilotaż na dwóch sekwencjach i jego ograniczenia opisuje
+[`RESULT_CDNET_PILOT.md`](RESULT_CDNET_PILOT.md). W tym pilotażu fuzja
+nie poprawiła wyniku względem pojedynczego detektora.
+
 ## 🧪 Testy
 
 ```

@@ -115,13 +115,14 @@ def detect_twist(frames, block_size=16, threshold=20):
         for y in range(0, h, block_size):
             for x in range(0, w, block_size):
                 region = L[y:y+block_size, x:x+block_size]
-                if region.size == 0:
+                if region.shape[0] < 2 or region.shape[1] < 2:
                     continue
-
-                left = np.mean(region[:, :block_size//2])
-                right = np.mean(region[:, block_size//2:])
-                top = np.mean(region[:block_size//2, :])
-                bottom = np.mean(region[block_size//2:, :])
+                mid_x = region.shape[1] // 2
+                mid_y = region.shape[0] // 2
+                left = np.mean(region[:, :mid_x])
+                right = np.mean(region[:, mid_x:])
+                top = np.mean(region[:mid_y, :])
+                bottom = np.mean(region[mid_y:, :])
 
                 T = abs(left - right) + abs(top - bottom)
 

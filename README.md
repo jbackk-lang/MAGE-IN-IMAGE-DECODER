@@ -74,6 +74,35 @@ print(report_engine(frames, detections, fusion))
 | SpectralOverlayDetector v2 | anomalie FFT, siatki, pierścienie, piki | F (widmo) |
 | FusionEngine | łączy wszystkie 5 w "punkty fuzji" | — |
 | ReportEngine | raport tekstowy (ranking, statystyki) | — |
+| META_DYNAMICS v0.1 | Λ/τ/ρ na siatce regionów ruchu (eksperymentalne, poza `run_i2d()`) | M (ruch) |
+
+### META_DYNAMICS v0.1 (eksperymentalne)
+
+Przeniesienie formalizmu Λ-τ-ρ z ekosystemu TIMDR (sygnały wibracyjne/
+sejsmiczne) na pole ruchu wideo — osobna gałąź, NIE wpięta do
+`run_i2d()`/`FusionEngine` (status eksperymentalny, wynik mieszany, patrz
+niżej). Pełna specyfikacja: [`PREREG_META_DYNAMICS_v0.1.md`](PREREG_META_DYNAMICS_v0.1.md).
+Wynik testu na realnym podzbiorze UCSD Ped2 (`data/ucsd_ped2/`, patrz
+[`data/ucsd_ped2/README.md`](data/ucsd_ped2/README.md) po źródło):
+[`RESULT_META_DYNAMICS_v0.1.md`](RESULT_META_DYNAMICS_v0.1.md) —
+**mieszany**: kontrole syntetyczne przeszły, ale na realnych danych tylko
+1 z 3 klipów testowych dał istotny efekt na Λ, a binarna flaga ρ nie
+zadziałała w ogóle (miskalibrowana stała progowa, zdiagnozowane, nie
+naprawione w v0.1 — patrz RESULT). Traktuj jako trop do dalszej pracy,
+nie gotową detekcję.
+
+```python
+from i2d_core import load_video, split_layers
+from meta_dynamics_v1 import compute_reference_thresholds, compute_video_meta_states
+
+ref_frames = load_video("zdrowe_referencyjne.mp4")
+split_layers(ref_frames)
+thresholds = compute_reference_thresholds(ref_frames)
+
+test_frames = load_video("do_sprawdzenia.mp4")
+split_layers(test_frames)
+states = compute_video_meta_states(test_frames, thresholds)  # lista VideoMetaState (Lambda/tau/rho/E per klatka)
+```
 
 ## 🎯 Zastosowania — jak i gdzie
 
@@ -107,7 +136,11 @@ pytest tests/ -v
 
 22 testy: import każdego modułu, tożsamość obiektu dla plików-aliasów,
 pozytywna/negatywna kontrola DC-bias, próg adaptacyjny DefectScannera,
-okresowość RhythmAnalyzera (L/V/M), pełne działanie `run_i2d()`.
+okresowość RhythmAnalyzera (L/V/M), pełne działanie `run_i2d()`. Osobno,
+9 testów dla META_DYNAMICS v0.1 (`test_meta_dynamics_v1.py` — kontrole
+syntetyczne + jednostkowe, `test_meta_dynamics_ped2_real.py` — regresja
+na realnym podzbiorze UCSD Ped2, pomijana automatycznie jeśli
+`data/ucsd_ped2/` nie jest obecne).
 
 ## 📄 Licencja
 

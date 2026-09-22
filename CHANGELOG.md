@@ -5,6 +5,26 @@ każdy moduł został uruchomiony na testowych klatkach, nie tylko przeczytany.
 Szczegóły implementacyjne i uzasadnienia patrz `tests/test_i2d_core.py` oraz
 komentarze `POPRAWKA` w kodzie.
 
+## Nowe (2026-09-22)
+
+- **META_DYNAMICS v0.1** (`meta_dynamics_v1.py`) — nowa, eksperymentalna
+  gałąź: przeniesienie formalizmu Λ-τ-ρ z ekosystemu TIMDR (sygnały
+  wibracyjne/sejsmiczne, `bearing_meta_adapter.py` w
+  `TIMDR-Industrial-Predict`) na pole ruchu wideo (siatka regionów +
+  `Frame.M`). Pełny protokół: `PREREG_META_DYNAMICS_v0.1.md` (zamrożony
+  PRZED danymi realnymi) → kontrole syntetyczne (pozytywna+negatywna,
+  `test_meta_dynamics_v1.py`, 6/6 PASSED) → test realny na podzbiorze
+  UCSD Ped2 (`data/ucsd_ped2/`, `real_meta_dynamics_ped2.py`). **Wynik
+  MIESZANY, zgłoszony bez retuningu** — patrz `RESULT_META_DYNAMICS_v0.1.md`:
+  Λ daje duży, istotny efekt na 1 z 3 klipów testowych (Test002,
+  p=9.9e-22), brak efektu na pozostałych dwóch; binarna flaga ρ (próg
+  mediana+3.5·MAD, stała nieprzeniesiona z domeny wibracji) nigdy nie
+  wyzwala się na tym materiale — zdiagnozowane jako miskalibracja stałej
+  międzydomenowej, nie błąd kodu, świadomie nie naprawione w v0.1
+  (retuning po zobaczeniu wyniku złamałby protokół prerejestracji).
+  Świadomie NIE wpięte do `run_i2d()`/`FusionEngine` (status
+  eksperymentalny).
+
 ## Naprawione
 
 1. **Brak importów** w `COLORPSYCHMAP v1.py`, `ColorPsychMap Λ‑psych.py`,

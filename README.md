@@ -87,9 +87,21 @@ Wynik testu na realnym podzbiorze UCSD Ped2 (`data/ucsd_ped2/`, patrz
 [`RESULT_META_DYNAMICS_v0.1.md`](RESULT_META_DYNAMICS_v0.1.md) —
 **mieszany**: kontrole syntetyczne przeszły, ale na realnych danych tylko
 1 z 3 klipów testowych dał istotny efekt na Λ, a binarna flaga ρ nie
-zadziałała w ogóle (miskalibrowana stała progowa, zdiagnozowane, nie
-naprawione w v0.1 — patrz RESULT). Traktuj jako trop do dalszej pracy,
-nie gotową detekcję.
+zadziałała w ogóle (stała progowa `k=3.5` zdiagnozowana jako zbyt luźna).
+
+**v0.2 — próba kalibracji `k`, wynik: STOP na bramce.**
+[`PREREG_META_DYNAMICS_RHO_CALIBRATION_v0.1.md`](PREREG_META_DYNAMICS_RHO_CALIBRATION_v0.1.md)
+skalibrowało `k=2.0` na osobnym zbiorze (`data/ucsd_ped2_calibration/`,
+rozłącznym z Test001-003), ale ponowna bramka syntetyczna
+([`PREREG_META_DYNAMICS_v0.2.md`](PREREG_META_DYNAMICS_v0.2.md)) wykazała,
+że `k=2.0` nie ma bezpiecznego marginesu — na innym scenariuszu
+syntetycznym niż ten użyty w kalibracji fałszywy alarm wychodzi dokładnie
+na granicy progu. Zgodnie z protokołem stop-if-failed, `Test001-003`
+NIE zostały ponownie dotknięte. Pełny wynik:
+[`RESULT_META_DYNAMICS_v0.2.md`](RESULT_META_DYNAMICS_v0.2.md) —
+**ocena całościowa: ρ NOT SUPPORTED (żadne k nie daje stabilnego progu),
+Λ pozostaje częściowym tropem (1 z 3 klipów, niepotwierdzone).**
+Traktuj całą gałąź jako zamkniętą eksplorację, nie gotową detekcję.
 
 ```python
 from i2d_core import load_video, split_layers
@@ -137,10 +149,11 @@ pytest tests/ -v
 22 testy: import każdego modułu, tożsamość obiektu dla plików-aliasów,
 pozytywna/negatywna kontrola DC-bias, próg adaptacyjny DefectScannera,
 okresowość RhythmAnalyzera (L/V/M), pełne działanie `run_i2d()`. Osobno,
-9 testów dla META_DYNAMICS v0.1 (`test_meta_dynamics_v1.py` — kontrole
-syntetyczne + jednostkowe, `test_meta_dynamics_ped2_real.py` — regresja
-na realnym podzbiorze UCSD Ped2, pomijana automatycznie jeśli
-`data/ucsd_ped2/` nie jest obecne).
+11 testów dla META_DYNAMICS v0.1/v0.2 (`test_meta_dynamics_v1.py` —
+kontrole syntetyczne k=3.5 i k=2.0 + jednostkowe (w tym jeden
+dokumentujący znany STOP bramki v0.2, patrz `RESULT_META_DYNAMICS_v0.2.md`),
+`test_meta_dynamics_ped2_real.py` — regresja na realnym podzbiorze UCSD
+Ped2, pomijana automatycznie jeśli `data/ucsd_ped2/` nie jest obecne).
 
 ## 📄 Licencja
 

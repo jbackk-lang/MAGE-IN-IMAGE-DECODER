@@ -123,16 +123,20 @@ class ReferenceThresholds:
     energy_threshold: float
 
 
-def compute_reference_thresholds(frames_ref, grid: Tuple[int, int] = DEFAULT_GRID) -> ReferenceThresholds:
+def compute_reference_thresholds(
+    frames_ref, grid: Tuple[int, int] = DEFAULT_GRID, k: float = ROBUST_K
+) -> ReferenceThresholds:
     """Progi MAD-owe policzone WYLACZNIE z klatek referencyjnych
     (zdrowych, np. klipy treningowe Ped2) -- patrz PREREG #3/#5. Wymaga
-    split_layers(frames_ref) wywolanego wczesniej."""
+    split_layers(frames_ref) wywolanego wczesniej. `k` domyslnie ROBUST_K
+    (stala calego ekosystemu TIMDR) -- parametryzowalne dla kalibracji,
+    patrz PREREG_META_DYNAMICS_RHO_CALIBRATION_v0.1.md."""
     energies = region_energy_series(frames_ref, grid=grid)
     lam = spatial_concentration(energies)
     E = energies.sum(axis=1)
     return ReferenceThresholds(
-        lambda_threshold=_mad_threshold(lam),
-        energy_threshold=_mad_threshold(E),
+        lambda_threshold=_mad_threshold(lam, k=k),
+        energy_threshold=_mad_threshold(E, k=k),
     )
 
 

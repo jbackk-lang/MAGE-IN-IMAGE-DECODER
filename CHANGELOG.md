@@ -25,6 +25,34 @@ komentarze `POPRAWKA` w kodzie.
   Świadomie NIE wpięte do `run_i2d()`/`FusionEngine` (status
   eksperymentalny).
 
+## v0.2 (2026-09-22, ten sam dzień) — kalibracja k, wynik: STOP na bramce
+
+- **`PREREG_META_DYNAMICS_RHO_CALIBRATION_v0.1.md`** — osobny protokół
+  kalibracji stałej `k` (MAD) na ROZŁĄCZNYM zbiorze kalibracyjnym
+  (`data/ucsd_ped2_calibration/`, klipy Test004/Test005, nigdy nieużyte
+  w ocenie głównej), z zamrożoną regułą wyboru PRZED sweepem.
+  `calibrate_rho_threshold.py` — sweep `k∈{3.5..0.5}`, wybrane `k=2.0`
+  (jedyne spełniające wszystkie 3 warunki: false_alarm<0.15,
+  sensitivity≥0.10, sensitivity>non_gt_rate).
+- **`PREREG_META_DYNAMICS_v0.2.md`** — wymóg ponownego przejścia bramki
+  syntetycznej z nowym `k` PRZED dotknięciem `Test001-003` (te same
+  klipy co v0.1, nietknięte podczas kalibracji).
+- **Wynik: bramka NIE przeszła w pełni.** Kontrola pozytywna z k=2.0
+  przeszła, ale kontrola negatywna (identyczny scenariusz syntetyczny co
+  oryginalna kontrola v0.1, INNY niż ten użyty podczas samej kalibracji)
+  dała `false_alarm_rate=0.1500` — dokładnie na granicy wymaganego
+  `<0.15`. Zdiagnozowane jako brak marginesu bezpieczeństwa progu
+  `k=2.0`, nie przypadkowa usterka testu — udokumentowane jako trwały,
+  przechodzący test regresyjny (`test_negative_control_k2_borderline_fails_gate_documented_stop`).
+  Zgodnie z protokołem stop-if-failed, `Test001-003` NIE zostały ponownie
+  przetestowane z tym `k` — `PREREG_META_DYNAMICS_v0.2.md` §5 wyklucza
+  dalsze dostrajanie tej samej definicji progu.
+- **`RESULT_META_DYNAMICS_v0.2.md`** — ocena całościowa gałęzi:
+  **ρ NOT SUPPORTED** (żadne `k` w zbadanym zakresie nie daje stabilnego,
+  działającego progu), **Λ pozostaje częściowym, niepotwierdzonym tropem**
+  (1 z 3 klipów testowych, niezmienione względem v0.1 — Λ nie zależy od
+  `k`). Cała gałąź traktowana jako zamknięta eksploracja.
+
 ## Naprawione
 
 1. **Brak importów** w `COLORPSYCHMAP v1.py`, `ColorPsychMap Λ‑psych.py`,

@@ -139,3 +139,58 @@ def test_negative_control_pure_noise_gives_no_spurious_alarms():
         f"za wysoka -- MAD-owy prog (k=3.5) powinien dawac rzadkie alarmy na "
         f"danych z tego samego rozkladu co referencja"
     )
+
+
+# ---------------------------------------------------------------------------
+# BRAMKA v0.2 -- powtorzenie obu kontroli z k=2.0 (PREREG_META_DYNAMICS_v0.2.md
+# sekcja 2), PO kalibracji w PREREG_META_DYNAMICS_RHO_CALIBRATION_v0.1.md.
+# Dopisane OBOK testow k=3.5 wyzej, nie zastepujace ich -- historia obu
+# wersji progu zostaje widoczna.
+# ---------------------------------------------------------------------------
+
+K_V02 = 2.0
+
+
+def test_positive_control_k2_injected_local_motion_raises_lambda_and_rho():
+    frames_ref = _make_noise_frames(30, seed=1)
+    frames_test = _make_noise_frames_with_patch(
+        60, seed=2, patch_window=(40, 50), patch_region=(0, 0)
+    )
+
+    thresholds = compute_reference_thresholds(frames_ref, k=K_V02)
+    states = compute_video_meta_states(frames_test, thresholds)
+
+    lam = np.array([s.Lambda for s in states])
+    rho = np.array([s.rho for s in states])
+    window_mask = np.zeros(60, dtype=bool)
+    window_mask[40:51] = True
+
+    assert lam[window_mask].mean() > lam[~window_mask].mean()
+    assert rho[window_mask].sum() > 0
+
+
+def test_negative_control_k2_borderline_fails_gate_documented_stop():
+    """UWAGA: ten test dokumentuje ZNANE, ZDIAGNOZOWANE zatrzymanie
+    protokolu (patrz RESULT_META_DYNAMICS_v0.2.md sekcja 2-3), NIE jest
+    testem "dziala poprawnie". Na TYM SAMYM scenariuszu syntetycznym co
+    oryginalna kontrola negatywna v0.1 (seed=10/20 -- inny niz scenariusz
+    uzyty w samej kalibracji, seed=98/99), k=2.0 (wybrane w
+    PREREG_META_DYNAMICS_RHO_CALIBRATION_v0.1.md) daje false_alarm_rate
+    DOKLADNIE na granicy bramki `<0.15` (formalnie: bramka NIE przechodzi).
+    Zgodnie z PREREG_META_DYNAMICS_v0.2.md, to jest STOP -- galaz
+    META_DYNAMICS-na-wideo NIE przeszla do ponownego testu na
+    Test001-003 z tym k. Jesli ten test kiedys zacznie failowac (np. po
+    zmianie w region_energy_series/spatial_concentration), to znaczy, ze
+    zachowanie kodu sie zmienilo i RESULT_META_DYNAMICS_v0.2.md trzeba
+    zaktualizowac -- nie ze test jest zly."""
+    frames_ref = _make_noise_frames(30, seed=10)
+    frames_test = _make_noise_frames(60, seed=20)
+
+    thresholds = compute_reference_thresholds(frames_ref, k=K_V02)
+    states = compute_video_meta_states(frames_test, thresholds)
+
+    rho = np.array([s.rho for s in states])
+    false_alarm_rate = rho.mean()
+    assert false_alarm_rate == pytest.approx(0.15, abs=1e-9)
+    gate_passes = bool(false_alarm_rate < 0.15)
+    assert gate_passes == False, "bramka v0.2 z k=2.0 na tym scenariuszu NIE przechodzi (oczekiwane, patrz RESULT v0.2)"

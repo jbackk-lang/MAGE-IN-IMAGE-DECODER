@@ -7,10 +7,15 @@ Użycie:
     fusion = fusion_engine(frames, detections)
 """
 
-try:
-    from i2d_core import Detection
-except ImportError:
-    from i2d_core_defectscanner_v2 import Detection
+from i2d_core import Detection
+
+
+def _detector_family(dtype):
+    """Warianty jednego detektora nie są niezależnymi potwierdzeniami."""
+    for prefix in ("spectral", "rhythm", "color"):
+        if dtype.startswith(prefix):
+            return prefix
+    return dtype
 
 
 def fusion_engine(frames, detections, block_size=16):
@@ -19,7 +24,7 @@ def fusion_engine(frames, detections, block_size=16):
 
     - scala detekcje z różnych warstw (L, C, M, F)
     - wykrywa miejsca, gdzie wiele modułów wskazuje na ten sam obszar
-    - tworzy mapę fuzji (fusion map)
+    - tworzy mapę fuzji tylko przy zgodności co najmniej dwóch rodzin
 
     Parametry:
         frames      : lista obiektów Frame (z i2d_core)
@@ -27,7 +32,8 @@ def fusion_engine(frames, detections, block_size=16):
         block_size  : rozmiar bloku grupowania (px), domyślnie 16
 
     Zwraca:
-        lista Detection z dtype="fusion" i skumulowaną siłą
+        lista Detection z dtype="fusion"; strength to liczba rodzin,
+        a NIE prawdopodobieństwo ani suma nieporównywalnych amplitud
     """
     fusion_map = []
 
@@ -48,16 +54,19 @@ def fusion_engine(frames, detections, block_size=16):
             block_map.setdefault(key, []).append(d)
 
         for (bx, by), det_list in block_map.items():
-            # Siła fuzji = suma sił wszystkich detekcji w bloku
-            fusion_strength = sum(d.strength for d in det_list)
+            families = {_detector_family(d.dtype) for d in det_list}
+            if len(families) < 2:
+                continue
+            fusion_strength = float(len(families))
 
             # Warstwy obecne w bloku
-            layers = list(set(d.layer for d in det_list))
+            layers = sorted({d.layer for d in det_list})
 
             # Typy sygnałów
-            types = list(set(d.dtype for d in det_list))
+            types = sorted({d.dtype for d in det_list})
 
-            desc = f"Fuzja sygnałów: {', '.join(types)} | warstwy: {', '.join(layers)}"
+            desc = (f"Fuzja {len(families)} rodzin: {', '.join(sorted(families))} "
+                    f"| typy: {', '.join(types)} | warstwy: {', '.join(layers)}")
 
             fusion_map.append(
                 Detection(

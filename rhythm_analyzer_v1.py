@@ -67,10 +67,18 @@ def detect_rhythm(frames,
     prev_V = None
     prev_M = None
 
-    # Bufory historii (do analizy okresowości po zakończeniu pętli)
+    # Historia średnich BLOKÓW zamiast pełnych obrazów (mniejsze użycie RAM).
     history_L = []
     history_V = []
     history_M = []
+
+    def _block_means(image):
+        h, w = image.shape
+        return np.array([
+            [float(np.mean(image[y:y+block_size, x:x+block_size]))
+             for x in range(0, w, block_size)]
+            for y in range(0, h, block_size)
+        ], dtype=np.float64)
 
     for f in frames:
         L = f.L
@@ -85,9 +93,9 @@ def detect_rhythm(frames,
         dM = cv2.absdiff(M, prev_M) if prev_M is not None else None
 
         # Zapis do historii (używane niżej do analizy okresowości)
-        history_L.append(L)
-        history_V.append(V)
-        history_M.append(M)
+        history_L.append(_block_means(L))
+        history_V.append(_block_means(V))
+        history_M.append(_block_means(M))
 
         h, w = L.shape
 
@@ -147,16 +155,16 @@ def detect_rhythm(frames,
         last = frames[-1]
 
         def _scan_periodicity(history_stack, dtype, layer, desc_prefix):
-            stack = np.stack(history_stack).astype(np.float64)
-            h, w = stack.shape[1], stack.shape[2]
-            for y in range(0, h, block_size):
-                for x in range(0, w, block_size):
-                    block_series = stack[:, y:y+block_size, x:x+block_size].mean(axis=(1, 2))
+            stack = np.stack(history_stack)
+            h_blocks, w_blocks = stack.shape[1:]
+            for by in range(h_blocks):
+                for bx in range(w_blocks):
+                    block_series = stack[:, by, bx]
                     lag, corr = _autocorr_peak(block_series, min_period, max_period)
                     if lag is not None and corr > thr_periodic:
                         detections.append(
                             Detection(
-                                last.id, last.time, x, y,
+                                last.id, last.time, bx * block_size, by * block_size,
                                 dtype, float(corr), layer,
                                 f"{desc_prefix} ~{lag} klatek (autokorelacja {corr:.2f})"
                             )

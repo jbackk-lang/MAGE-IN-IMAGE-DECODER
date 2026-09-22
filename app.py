@@ -37,6 +37,8 @@ from contour_curvature import compute_reference_threshold, extract_contours, con
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # 20MB, demo/dashboard, nie produkcja
+UPLOAD_MAX_FRAMES = 300  # jawny limit RAM dla lokalnego dashboardu
+UPLOAD_MAX_TOTAL_PIXELS = 12_000_000  # klatki * rozdzielczość; FFT zajmuje dużo RAM
 
 BASE_DIR = os.path.dirname(__file__)
 SCREENSHOTS_DIR = os.path.join(BASE_DIR, "screenshots")
@@ -91,8 +93,13 @@ def load_upload_frames(file_storage) -> List[Frame]:
     try:
         if suffix in (".png", ".jpg", ".jpeg", ".bmp"):
             frames = load_image(path)
+            if frames[0].raw.shape[0] * frames[0].raw.shape[1] > UPLOAD_MAX_TOTAL_PIXELS:
+                raise ValueError("Obraz przekracza limit 12 mln pikseli")
+        elif suffix in (".mp4", ".avi", ".mov", ".mkv", ".webm"):
+            frames = load_video(path, max_frames=UPLOAD_MAX_FRAMES,
+                                max_total_pixels=UPLOAD_MAX_TOTAL_PIXELS)
         else:
-            frames = load_video(path)
+            raise ValueError("Obsługiwane formaty: PNG/JPG/BMP oraz MP4/AVI/MOV/MKV/WEBM")
         if not frames:
             raise ValueError("nie znaleziono klatek w przeslanym pliku")
         split_layers(frames)
@@ -139,13 +146,13 @@ def _meta_dynamics_demo(frames_ref: List[Frame], frames_test: List[Frame]) -> Tu
             y0, y1 = r * h // rows, (r + 1) * h // rows
             x0, x1 = c * w // cols, (c + 1) * w // cols
             cv2.rectangle(overlay, (x0, y0), (x1, y1), (80, 80, 80), 1)
-    color = (0, 0, 255) if s.rho else (0, 200, 0)
-    cv2.putText(overlay, f"Lambda={s.Lambda:.3f} rho={s.rho} tau={s.tau:.3f}",
-                (8, h - 12), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+    # Historyczne rho jest zachowane w module, ale nie jest zwalidowanym alarmem.
+    cv2.putText(overlay, f"Lambda={s.Lambda:.3f} tau={s.tau:.3f} [badawcze]",
+                (8, h - 12), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 200, 255), 1, cv2.LINE_AA)
 
     stats = (f"Klatka {idx+1}/{len(frames_test)} (max Lambda w klipie). "
              f"Lambda={s.Lambda:.4f} (prog={thresholds.lambda_threshold:.4f}), "
-             f"rho={s.rho} (0/1, alarm binarny), tau={s.tau:.4f}, "
+             f"tau={s.tau:.4f}, historyczne rho={s.rho} (NIE jest alarmem; bramka v0.2 STOP), "
              f"E={s.E:.2f} (prog={thresholds.energy_threshold:.2f}).")
     return f.raw, overlay, stats
 

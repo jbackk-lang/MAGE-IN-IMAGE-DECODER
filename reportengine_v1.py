@@ -17,7 +17,7 @@ def report_engine(frames, detections, fusion, top_n=20):
     - podsumowanie detekcji
     - statystyki warstw
     - statystyki typów sygnałów
-    - ranking najsilniejszych punktów
+    - ranking osobno dla każdego typu (surowe siły nie są porównywalne)
     - analiza fuzji
     """
 
@@ -58,27 +58,31 @@ def report_engine(frames, detections, fusion, top_n=20):
     # ------------------------------------------------------------
     # 4. NAJSILNIEJSZE DETEKCJE
     # ------------------------------------------------------------
-    strongest = sorted(detections, key=lambda d: d.strength, reverse=True)[:top_n]
-
-    report.append(f"=== Top {top_n} najsilniejszych detekcji ===")
-    for d in strongest:
-        report.append(
-            f"[Frame {d.frame_id} | t={d.time:.3f}s] "
-            f"({d.x},{d.y}) | {d.dtype} | warstwa {d.layer} | siła {d.strength:.2f}"
-        )
+    report.append(f"=== Top {top_n} detekcji w każdym typie (bez porównywania skal) ===")
+    for dtype in sorted(type_stats):
+        strongest = sorted(
+            (d for d in detections if d.dtype == dtype),
+            key=lambda d: d.strength, reverse=True,
+        )[:top_n]
+        report.append(f"[{dtype}]")
+        for d in strongest:
+            report.append(
+                f"[Frame {d.frame_id} | t={d.time:.3f}s] "
+                f"({d.x},{d.y}) | warstwa {d.layer} | surowa siła {d.strength:.2f}"
+            )
     report.append("")
 
     # ------------------------------------------------------------
     # 5. ANALIZA FUZJI
     # ------------------------------------------------------------
-    report.append("=== Punkty fuzji (najbardziej podejrzane miejsca) ===")
+    report.append("=== Punkty fuzji (zgodność rodzin detektorów, nie alarm) ===")
 
     fusion_sorted = sorted(fusion, key=lambda d: d.strength, reverse=True)
 
     for d in fusion_sorted[:top_n]:
         report.append(
             f"[Frame {d.frame_id} | t={d.time:.3f}s] "
-            f"({d.x},{d.y}) | siła fuzji {d.strength:.2f} | {d.desc}"
+            f"({d.x},{d.y}) | liczba rodzin {int(d.strength)} | {d.desc}"
         )
 
     report.append("")

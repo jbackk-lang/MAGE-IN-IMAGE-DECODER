@@ -2,8 +2,9 @@
 
 Modularny system analizy obrazu, ruchu, koloru i widma. Pięć niezależnych
 detektorów (skręt, defekty, rytm, emocja koloru, anomalie widmowe FFT)
-łączy się w jedną listę "punktów fuzji" — miejsc, gdzie kilka sygnałów
-wskazuje na to samo.
+łączy się w jedną listę "punktów fuzji" — miejsc, gdzie co najmniej
+dwie różne rodziny detektorów wskazują ten sam blok. Jest to wskazówka
+do oględzin, nie skalibrowane prawdopodobieństwo ani dowód manipulacji.
 
 📘 Dokumentacja online: https://jbackk-lang.github.io/
 📝 Historia poprawek i szczegóły techniczne: [CHANGELOG.md](CHANGELOG.md)
@@ -57,6 +58,10 @@ fusion = fusion_engine(frames, detections)
 print(report_engine(frames, detections, fusion))
 ```
 
+Fuzja nie sumuje już nieporównywalnych wartości `strength`: jej wynik to
+liczba rodzin detektorów (np. `spectral_peak` i `spectral_ring` to jedna
+rodzina). Raport szereguje surowe wyniki osobno dla każdego typu.
+
 > Importuj z plików bez spacji w nazwie (`i2d_core`, `fusionengine_v1`,
 > `reportengine_v1`, `rhythm_analyzer_v1`, `colorpsychmap_v1`,
 > `colorpsychmap_lambda_psych`, `spectral_overlay_detector_v2`) — to
@@ -103,6 +108,8 @@ NIE zostały ponownie dotknięte. Pełny wynik:
 **ocena całościowa: ρ NOT SUPPORTED (żadne k nie daje stabilnego progu),
 Λ pozostaje częściowym tropem (1 z 3 klipów, niepotwierdzone).**
 Traktuj całą gałąź jako zamkniętą eksplorację, nie gotową detekcję.
+Dashboard pokazuje historyczne `rho` wyłącznie informacyjnie; nie używa
+go jako zwalidowanego alarmu.
 
 ```python
 from i2d_core import load_video, split_layers
@@ -116,6 +123,18 @@ test_frames = load_video("do_sprawdzenia.mp4")
 split_layers(test_frames)
 states = compute_video_meta_states(test_frames, thresholds)  # lista VideoMetaState (Lambda/tau/rho/E per klatka)
 ```
+
+Osobny, **opisowy** odczyt TIMDR dla własnego filmu (bez progu, `rho`
+i werdyktu) można uruchomić:
+
+```
+python timdr_video_diagnostics.py nagranie.mp4 --max-frames 300 --output opis.json
+```
+
+Raport JSON zawiera szeregi i kwantyle Λ, τ oraz energii ruchu. Status
+`EXPLORATORY_ONLY` oznacza, że wynik nie klasyfikuje anomalii i nie
+otwiera ponownie klipów `Test001-003` do strojenia. Analiza, czy ten
+kierunek jest użyteczny, wymaga nowego prerejestru i niezależnego zbioru.
 
 ### CONTOUR_CURVATURE v0.1 (eksperymentalne, G-branch)
 
@@ -188,6 +207,11 @@ formularz do wgrania własnego obrazu/wideo i uruchomienia detekcji na
 "eksperymentalny" i notatkę o realnym, częściowym/mieszanym wyniku
 (patrz `RESULT_META_DYNAMICS_v0.2.md`, `RESULT_CONTOUR_CURVATURE_v0.1.md`)
 — dashboard nie ukrywa niepełnych wyników.
+Wgrywane wideo ma limit 300 klatek, 12 mln pikseli łącznie i 20 MB;
+zbyt duży plik jest odrzucany jawnie, a nie po cichu obcinany.
+Główny interfejs `run_i2d()`
+nadal wczytuje cały film do pamięci, więc długie nagrania wymagają
+partiowego pipeline'u w przyszłej wersji.
 
 ## 🧪 Testy
 

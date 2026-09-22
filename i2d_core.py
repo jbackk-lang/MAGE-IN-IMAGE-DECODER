@@ -30,21 +30,36 @@ class Detection:
 #   FRAME LOADER
 # ============================
 
-def load_video(path):
+def load_video(path, max_frames=None, max_total_pixels=None):
+    """Wczytaj wideo; opcjonalne limity odrzucają wejście bez ucinania."""
+    if max_frames is not None and max_frames < 1:
+        raise ValueError("max_frames musi być dodatnie")
+    if max_total_pixels is not None and max_total_pixels < 1:
+        raise ValueError("max_total_pixels musi być dodatnie")
     cap = cv2.VideoCapture(path)
+    if not cap.isOpened():
+        cap.release()
+        raise ValueError(f"Nie można otworzyć wideo: {path}")
     frames = []
     frame_id = 0
-
-    while True:
-        ret, raw = cap.read()
-        if not ret:
-            break
-
-        time = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
-        frames.append(Frame(frame_id, time, raw))
-        frame_id += 1
-
-    cap.release()
+    total_pixels = 0
+    try:
+        while True:
+            ret, raw = cap.read()
+            if not ret:
+                break
+            if max_frames is not None and frame_id >= max_frames:
+                raise ValueError(f"Wideo przekracza limit {max_frames} klatek")
+            total_pixels += raw.shape[0] * raw.shape[1]
+            if max_total_pixels is not None and total_pixels > max_total_pixels:
+                raise ValueError(f"Wideo przekracza limit {max_total_pixels} pikseli łącznie")
+            time = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
+            frames.append(Frame(frame_id, time, raw))
+            frame_id += 1
+    finally:
+        cap.release()
+    if not frames:
+        raise ValueError(f"Wideo nie zawiera czytelnych klatek: {path}")
     return frames
 
 
@@ -208,8 +223,10 @@ def run_i2d(path, mode="video"):
     """
     if mode == "image":
         frames = load_image(path)
-    else:
+    elif mode == "video":
         frames = load_video(path)
+    else:
+        raise ValueError("mode musi mieć wartość 'image' albo 'video'")
 
     split_layers(frames)
 

@@ -53,6 +53,34 @@ komentarze `POPRAWKA` w kodzie.
   (1 z 3 klipów testowych, niezmienione względem v0.1 — Λ nie zależy od
   `k`). Cała gałąź traktowana jako zamknięta eksploracja.
 
+## CONTOUR_CURVATURE v0.1 (2026-09-22, G-branch)
+
+- **`contour_curvature.py`** — nowa, eksperymentalna gałąź: dyskretna
+  krzywizna konturów 2D (`cv2.Canny`+`cv2.findContours`, klasyczny wzór
+  kąt-zmiany-kierunku/długość-łuku) — NIE związana z operatorem
+  Weingartena z `TIMDR-Geometry-Formalism` (to siatki 3D, tu krzywa 2D)
+  ani z `detect_twist()` (niepowiązana asymetria jasności bloku pikseli).
+  Sprawdzono PRZED napisaniem kodu, żeby uniknąć duplikacji — patrz
+  `PREREG_CONTOUR_CURVATURE_v0.1.md` sekcja 0.
+- Pełny protokół: PREREG (zamrożony PRZED danymi realnymi) → kontrole
+  syntetyczne (`test_contour_curvature.py`, 7/7 PASSED) → test realny na
+  4-obrazowym podzbiorze CASIA v2 z ground truth
+  (`data/casia2_splicing_sample/`, `real_contour_curvature_casia2.py`).
+- **Poprawka metodologiczna znaleziona PRZED bramką**: pierwsza wersja
+  kontroli porównywała Mann-Whitney na surowych wartościach krzywizny
+  punkt-po-punkcie — zawyżało to fałszywe alarmy do 15-40% (zamiast ~5%)
+  bo sąsiednie punkty tego samego konturu są skorelowane (złamanie
+  założenia niezależności obserwacji MWU). Naprawione: jednostka
+  porównania to jedna gęstość `G_kappa` per region/obraz, nie punkt.
+- **Wynik na danych realnych: CZĘŚCIOWO SUPPORTED, niska moc (N=4)** —
+  patrz `RESULT_CONTOUR_CURVATURE_v0.1.md`: 1 z 4 obrazów istotny po
+  korekcie Bonferroniego (α=0.0125), kierunek zgodny z hipotezą; oryginalny
+  zbiór CASIA v2 nie jest już publicznie hostowany, jedyny bezpośrednio
+  dostępny podzbiór z ground truth ma tylko 4 przykłady. Zgłoszone jako
+  wstępny trop wymagający replikacji na większym zbiorze, świadomie NIE
+  dostrajane po zobaczeniu wyniku. Świadomie NIE wpięte do
+  `run_i2d()`/`FusionEngine` (status eksperymentalny).
+
 ## Naprawione
 
 1. **Brak importów** w `COLORPSYCHMAP v1.py`, `ColorPsychMap Λ‑psych.py`,

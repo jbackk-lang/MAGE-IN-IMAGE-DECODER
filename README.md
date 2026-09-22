@@ -75,6 +75,7 @@ print(report_engine(frames, detections, fusion))
 | FusionEngine | łączy wszystkie 5 w "punkty fuzji" | — |
 | ReportEngine | raport tekstowy (ranking, statystyki) | — |
 | META_DYNAMICS v0.1 | Λ/τ/ρ na siatce regionów ruchu (eksperymentalne, poza `run_i2d()`) | M (ruch) |
+| CONTOUR_CURVATURE v0.1 | krzywizna dyskretna konturów 2D, wykrywanie splicingu (eksperymentalne, poza `run_i2d()`) | G (kontury/krawędzie) |
 
 ### META_DYNAMICS v0.1 (eksperymentalne)
 
@@ -116,6 +117,39 @@ split_layers(test_frames)
 states = compute_video_meta_states(test_frames, thresholds)  # lista VideoMetaState (Lambda/tau/rho/E per klatka)
 ```
 
+### CONTOUR_CURVATURE v0.1 (eksperymentalne, G-branch)
+
+Krzywizna dyskretna konturów 2D (`cv2.Canny`+`cv2.findContours`, klasyczny
+wzór na krzywiznę krzywej płaskiej — kąt zmiany kierunku na jednostkę
+długości łuku) — osobna gałąź, NIE wpięta do `run_i2d()`/`FusionEngine`
+(status eksperymentalny). NIE jest związana z operatorem Weingartena
+(siatki 3D, `TIMDR-Geometry-Formalism`) ani z `detect_twist()`
+(niepowiązana asymetria jasności bloku pikseli) — patrz uzasadnienie w
+[`PREREG_CONTOUR_CURVATURE_v0.1.md`](PREREG_CONTOUR_CURVATURE_v0.1.md)
+sekcja 0. Hipoteza: regiony obrazu ze wklejoną/skopiowaną treścią
+(splicing/copy-move) mają wyższą gęstość szczytów krzywizny na granicy
+wklejenia niż regiony naturalne. Wynik testu na realnym podzbiorze
+CASIA v2 (`data/casia2_splicing_sample/`, patrz
+[`PREREG_CONTOUR_CURVATURE_v0.1_ADDENDUM.md`](PREREG_CONTOUR_CURVATURE_v0.1_ADDENDUM.md)):
+[`RESULT_CONTOUR_CURVATURE_v0.1.md`](RESULT_CONTOUR_CURVATURE_v0.1.md) —
+**CZĘŚCIOWO SUPPORTED, niska moc (N=4)**: bramka syntetyczna przeszła
+czysto (7/7 testów), ale na realnych danych tylko 1 z 4 obrazów dał
+istotny efekt (po korekcie Bonferroniego) — jedyny publicznie dostępny
+podzbiór CASIA v2 z ground truth ma tylko 4 przykłady (oryginalny zbiór
+nie jest już hostowany publicznie). Traktuj jako wstępny trop wymagający
+replikacji na większym zbiorze, nie gotową detekcję.
+
+```python
+from contour_curvature import compute_reference_threshold, region_kappa_density
+import cv2
+
+ref_images = [cv2.imread(p, cv2.IMREAD_GRAYSCALE) for p in ["tlo1.png", "tlo2.png"]]
+threshold = compute_reference_threshold(ref_images)
+
+img = cv2.imread("do_sprawdzenia.png", cv2.IMREAD_GRAYSCALE)
+density = region_kappa_density(img, threshold, roi=(100, 100, 200, 200))  # (x0,y0,x1,y1)
+```
+
 ## 🎯 Zastosowania — jak i gdzie
 
 - **Wykrywanie manipulacji wideo / ukrytych nakładek** — `run_i2d(path)`
@@ -154,6 +188,11 @@ kontrole syntetyczne k=3.5 i k=2.0 + jednostkowe (w tym jeden
 dokumentujący znany STOP bramki v0.2, patrz `RESULT_META_DYNAMICS_v0.2.md`),
 `test_meta_dynamics_ped2_real.py` — regresja na realnym podzbiorze UCSD
 Ped2, pomijana automatycznie jeśli `data/ucsd_ped2/` nie jest obecne).
+Osobno, 7 testów dla CONTOUR_CURVATURE v0.1 (`test_contour_curvature.py` —
+jednostkowe + kontrola pozytywna/negatywna, patrz
+`RESULT_CONTOUR_CURVATURE_v0.1.md`); test główny na realnych danych
+(`real_contour_curvature_casia2.py`) to skrypt raportujący, nie
+`pytest` (N=4, za mało na sensowną regresję automatyczną).
 
 ## 📄 Licencja
 

@@ -173,6 +173,22 @@ Dalsze kierunki rozwoju (GPU/CUDA FFT, optyczny przepływ, segmentacja
 semantyczna, heatmapy, Realtime I²D z kamery/streamu) — opisane w kodzie
 poszczególnych modułów, nieprzetestowane.
 
+## 🖥️ Dashboard (na żywo)
+
+```
+pip install -r requirements.txt
+python app.py
+```
+
+Otwiera się na `http://localhost:5050`. Strona per moduł (wszystkie 7:
+5 stabilnych detektorów + META_DYNAMICS + CONTOUR_CURVATURE) pokazuje
+gotowy przykład (wejście + nałożone oznaczenia detekcji + statystyki) oraz
+formularz do wgrania własnego obrazu/wideo i uruchomienia detekcji na
+żywo. META_DYNAMICS i CONTOUR_CURVATURE mają wyraźną plakietkę
+"eksperymentalny" i notatkę o realnym, częściowym/mieszanym wyniku
+(patrz `RESULT_META_DYNAMICS_v0.2.md`, `RESULT_CONTOUR_CURVATURE_v0.1.md`)
+— dashboard nie ukrywa niepełnych wyników.
+
 ## 🧪 Testy
 
 ```

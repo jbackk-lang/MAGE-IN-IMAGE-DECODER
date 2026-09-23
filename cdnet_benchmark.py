@@ -18,7 +18,14 @@ from fusionengine_v1 import fusion_engine
 from i2d_core import Frame, detect_defects, detect_twist
 
 BLOCK_SIZE = 16
-METHODS = ("defect", "defect_twist_fusion", "mog2")
+METHODS = (
+    "defect", "defect_motion_pixels", "defect_twist_fusion",
+    "fusion_motion_pixels", "vector_flow", "defect_vector_fusion",
+    "mog2", "mog2_vector_fusion", "mog2_sparse_lk", "mog2_cached_flow_2",
+)
+PIXEL_MOTION_THRESHOLD = 10  # dolne ograniczenie progu w detect_defects
+VECTOR_MIN_DISPLACEMENT = 1.0  # piksele/klatkę, próg techniczny, nie kalibrowany na GT
+VECTOR_MIN_COHERENCE = 0.75    # zgodność kierunku wektorów w bloku
 FRAME_PATTERN = re.compile(r"in(\d+)\.(?:jpg|jpeg|png)$", re.IGNORECASE)
 
 
@@ -68,6 +75,114 @@ def _detections_to_mask(detections, shape, block_size=BLOCK_SIZE):
     return mask
 
 
+def _coherent_flow_mask(flow, block_size=BLOCK_SIZE,
+                        min_displacement=VECTOR_MIN_DISPLACEMENT,
+                        min_coherence=VECTOR_MIN_COHERENCE):
+    """Maska bloków o wystarczającym i spójnym kierunkowo przepływie.
+
+    Decyzja dotyczy całego bloku wektorów, nie jasności pojedynczego piksela.
+    """
+    if flow.ndim != 3 or flow.shape[2] != 2:
+        raise ValueError("flow musi mieć dwa kanały vx/vy")
+    if block_size < 1:
+        raise ValueError("block_size musi być dodatni")
+    height, width = flow.shape[:2]
+    blocks_y = (height + block_size - 1) // block_size
+    blocks_x = (width + block_size - 1) // block_size
+    pad_y = blocks_y * block_size - height
+    pad_x = blocks_x * block_size - width
+    vectors = np.pad(flow, ((0, pad_y), (0, pad_x), (0, 0)))
+    magnitudes = np.pad(np.linalg.norm(flow, axis=2), ((0, pad_y), (0, pad_x)))
+    vectors = vectors.reshape(blocks_y, block_size, blocks_x, block_size, 2)
+    magnitudes = magnitudes.reshape(blocks_y, block_size, blocks_x, block_size)
+    y_counts = np.minimum(block_size, height - np.arange(blocks_y) * block_size)
+    x_counts = np.minimum(block_size, width - np.arange(blocks_x) * block_size)
+    counts = y_counts[:, None] * x_counts[None, :]
+    mean_vectors = vectors.sum(axis=(1, 3)) / counts[:, :, None]
+    mean_magnitudes = magnitudes.sum(axis=(1, 3)) / counts
+    displacement = np.linalg.norm(mean_vectors, axis=2)
+    coherence = np.divide(displacement, mean_magnitudes,
+                          out=np.zeros_like(displacement), where=mean_magnitudes > 1e-6)
+    selected = (displacement >= min_displacement) & (coherence >= min_coherence)
+    return np.repeat(np.repeat(selected, block_size, axis=0), block_size, axis=1)[:height, :width]
+
+
+def _dense_vector_mask(previous_gray, gray, elapsed_frames=1):
+    """Piramidalny dense flow na połowie rozdzielczości, przeliczony na px/klatkę."""
+    small_size = (max(32, gray.shape[1] // 2), max(32, gray.shape[0] // 2))
+    flow = cv2.calcOpticalFlowFarneback(
+        cv2.resize(previous_gray, small_size, interpolation=cv2.INTER_AREA),
+        cv2.resize(gray, small_size, interpolation=cv2.INTER_AREA), None,
+        pyr_scale=0.5, levels=2, winsize=15, iterations=2,
+        poly_n=5, poly_sigma=1.2, flags=0,
+    )
+    flow = cv2.resize(flow, (gray.shape[1], gray.shape[0]),
+                      interpolation=cv2.INTER_LINEAR)
+    flow[:, :, 0] *= gray.shape[1] / small_size[0] / elapsed_frames
+    flow[:, :, 1] *= gray.shape[0] / small_size[1] / elapsed_frames
+    return _coherent_flow_mask(flow)
+
+
+def _sparse_candidate_mask(previous_gray, gray, candidate_mask,
+                           block_size=BLOCK_SIZE):
+    """LK śledzi cechy tylko w ROI MOG2, następnie agreguje wektory blokowo.
+
+    Dense Farnebäck nie potrafi sensownie działać na dowolnym zbiorze
+    pojedynczych pikseli: potrzebuje sąsiedztwa. Tu ROI służy do wyboru
+    punktów Shi-Tomasi, a piramidalny LK śledzi jedynie te punkty.
+    """
+    height, width = gray.shape
+    empty = np.zeros((height, width), dtype=bool)
+    if previous_gray is None or not np.any(candidate_mask):
+        return empty
+    small_size = (max(32, width // 2), max(32, height // 2))
+    previous_small = cv2.resize(previous_gray, small_size, interpolation=cv2.INTER_AREA)
+    gray_small = cv2.resize(gray, small_size, interpolation=cv2.INTER_AREA)
+    roi_small = cv2.resize(candidate_mask.astype(np.uint8), small_size,
+                           interpolation=cv2.INTER_NEAREST)
+    roi_small = cv2.dilate(roi_small, np.ones((5, 5), dtype=np.uint8))
+    points = cv2.goodFeaturesToTrack(previous_small, maxCorners=1200,
+                                     qualityLevel=0.01, minDistance=3,
+                                     mask=roi_small, blockSize=3)
+    if points is None:
+        return empty
+    tracked, status, _ = cv2.calcOpticalFlowPyrLK(
+        previous_small, gray_small, points, None,
+        winSize=(15, 15), maxLevel=2,
+        criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03),
+    )
+    if tracked is None or status is None:
+        return empty
+    previous_points = points.reshape(-1, 2)
+    tracked_points = tracked.reshape(-1, 2)
+    good = status.reshape(-1).astype(bool)
+    good &= np.isfinite(tracked_points).all(axis=1)
+    good &= (tracked_points[:, 0] >= 0) & (tracked_points[:, 0] < small_size[0])
+    good &= (tracked_points[:, 1] >= 0) & (tracked_points[:, 1] < small_size[1])
+    if not np.any(good):
+        return empty
+    sx, sy = width / small_size[0], height / small_size[1]
+    end = tracked_points[good]
+    displacement = (end - previous_points[good]) * np.array([sx, sy], dtype=np.float32)
+    bx = np.clip((end[:, 0] * sx // block_size).astype(int), 0, (width - 1) // block_size)
+    by = np.clip((end[:, 1] * sy // block_size).astype(int), 0, (height - 1) // block_size)
+    blocks_x = (width + block_size - 1) // block_size
+    blocks_y = (height + block_size - 1) // block_size
+    flat_index = by * blocks_x + bx
+    n_blocks = blocks_x * blocks_y
+    counts = np.bincount(flat_index, minlength=n_blocks)
+    sum_x = np.bincount(flat_index, weights=displacement[:, 0], minlength=n_blocks)
+    sum_y = np.bincount(flat_index, weights=displacement[:, 1], minlength=n_blocks)
+    lengths = np.linalg.norm(displacement, axis=1)
+    sum_lengths = np.bincount(flat_index, weights=lengths, minlength=n_blocks)
+    net = np.hypot(sum_x, sum_y)
+    mean_displacement = np.divide(net, counts, out=np.zeros_like(net), where=counts > 0)
+    coherence = np.divide(net, sum_lengths, out=np.zeros_like(net), where=sum_lengths > 1e-6)
+    selected = ((counts >= 2) & (mean_displacement >= VECTOR_MIN_DISPLACEMENT) &
+                (coherence >= VECTOR_MIN_COHERENCE)).reshape(blocks_y, blocks_x)
+    return np.repeat(np.repeat(selected, block_size, axis=0), block_size, axis=1)[:height, :width]
+
+
 def _new_counts():
     return {key: 0 for key in ("tp", "fp", "fn", "tn")}
 
@@ -108,6 +223,9 @@ def run_sequence(sequence: str | Path, max_frames: int | None = None):
     counts = {name: _new_counts() for name in METHODS}
     runtime = {name: 0.0 for name in METHODS}
     previous_gray = None
+    cached_gray = None
+    cached_vector_mask = None
+    cached_at_frame = None
     processed = evaluated = 0
     for index, path in frames:
         if max_frames is not None and processed >= max_frames:
@@ -121,7 +239,6 @@ def run_sequence(sequence: str | Path, max_frames: int | None = None):
         gray = cv2.cvtColor(raw, cv2.COLOR_BGR2GRAY)
         motion = (np.zeros_like(gray) if previous_gray is None
                   else cv2.absdiff(gray, previous_gray))
-        previous_gray = gray
         frame = Frame(index, float(index), raw)
         frame.L, frame.M = gray, motion
         preprocessing_s = time.perf_counter() - start
@@ -132,26 +249,88 @@ def run_sequence(sequence: str | Path, max_frames: int | None = None):
         defect_mask = _detections_to_mask(defects, gray.shape)
 
         start = time.perf_counter()
+        motion_pixels = motion > PIXEL_MOTION_THRESHOLD
+        defect_pixel_mask = defect_mask & motion_pixels
+        pixel_refine_s = time.perf_counter() - start
+
+        start = time.perf_counter()
         twists = detect_twist([frame], block_size=BLOCK_SIZE)
         fused = fusion_engine([frame], defects + twists, block_size=BLOCK_SIZE)
         fusion_extra_s = time.perf_counter() - start
         fusion_mask = _detections_to_mask(fused, gray.shape)
 
         start = time.perf_counter()
+        fusion_pixel_mask = fusion_mask & motion_pixels
+        fusion_refine_s = time.perf_counter() - start
+
+        start = time.perf_counter()
+        if previous_gray is None:
+            vector_mask = np.zeros_like(defect_mask)
+        else:
+            vector_mask = _dense_vector_mask(previous_gray, gray)
+        vector_s = time.perf_counter() - start
+        start = time.perf_counter()
+        defect_vector_mask = defect_mask & vector_mask
+        vector_fusion_s = time.perf_counter() - start
+        start = time.perf_counter()
         mog2_mask = mog2.apply(raw) > 0
         mog2_s = time.perf_counter() - start
+        start = time.perf_counter()
+        mog2_vector_mask = mog2_mask & vector_mask
+        mog2_vector_fusion_s = time.perf_counter() - start
+
+        start = time.perf_counter()
+        sparse_vector_mask = _sparse_candidate_mask(previous_gray, gray, mog2_mask)
+        sparse_s = time.perf_counter() - start
+        start = time.perf_counter()
+        mog2_sparse_mask = mog2_mask & sparse_vector_mask
+        sparse_fusion_s = time.perf_counter() - start
+
+        start = time.perf_counter()
+        if previous_gray is None:
+            cached_vector_mask = np.zeros_like(mog2_mask)
+        elif processed % 2 == 0:
+            basis = cached_gray if cached_gray is not None else previous_gray
+            elapsed = processed - cached_at_frame if cached_at_frame is not None else 1
+            cached_vector_mask = _dense_vector_mask(basis, gray, elapsed_frames=elapsed)
+            cached_gray = gray
+            cached_at_frame = processed
+        cached_flow_s = time.perf_counter() - start
+        start = time.perf_counter()
+        mog2_cached_mask = mog2_mask & cached_vector_mask
+        cached_fusion_s = time.perf_counter() - start
+        previous_gray = gray
 
         runtime["defect"] += preprocessing_s + defect_s
+        runtime["defect_motion_pixels"] += preprocessing_s + defect_s + pixel_refine_s
         runtime["defect_twist_fusion"] += preprocessing_s + defect_s + fusion_extra_s
+        runtime["fusion_motion_pixels"] += (preprocessing_s + defect_s +
+                                             fusion_extra_s + pixel_refine_s + fusion_refine_s)
+        runtime["vector_flow"] += preprocessing_s + vector_s
+        runtime["defect_vector_fusion"] += (preprocessing_s + defect_s +
+                                            vector_s + vector_fusion_s)
         runtime["mog2"] += mog2_s
+        runtime["mog2_vector_fusion"] += (preprocessing_s + vector_s +
+                                           mog2_s + mog2_vector_fusion_s)
+        runtime["mog2_sparse_lk"] += (preprocessing_s + mog2_s +
+                                       sparse_s + sparse_fusion_s)
+        runtime["mog2_cached_flow_2"] += (preprocessing_s + mog2_s +
+                                           cached_flow_s + cached_fusion_s)
 
         if first <= index <= last:
             gt = _ground_truth(gt_dir, index, roi.shape)
             valid = roi & ((gt == 0) | (gt == 255))
             for name, predicted in (
                 ("defect", defect_mask),
+                ("defect_motion_pixels", defect_pixel_mask),
                 ("defect_twist_fusion", fusion_mask),
+                ("fusion_motion_pixels", fusion_pixel_mask),
+                ("vector_flow", vector_mask),
+                ("defect_vector_fusion", defect_vector_mask),
                 ("mog2", mog2_mask),
+                ("mog2_vector_fusion", mog2_vector_mask),
+                ("mog2_sparse_lk", mog2_sparse_mask),
+                ("mog2_cached_flow_2", mog2_cached_mask),
             ):
                 _update_counts(counts[name], predicted, gt, valid)
             evaluated += 1
@@ -177,6 +356,12 @@ def run_benchmark(sequences, max_frames=None):
         "status": "PARTIAL" if any(r["partial_run"] for r in results) else "COMPLETE",
         "parameters": {
             "block_size": BLOCK_SIZE,
+            "pixel_motion_threshold": PIXEL_MOTION_THRESHOLD,
+            "vector_min_displacement_px_per_frame": VECTOR_MIN_DISPLACEMENT,
+            "vector_min_directional_coherence": VECTOR_MIN_COHERENCE,
+            "sparse_lk_max_corners": 1200,
+            "sparse_lk_min_tracks_per_block": 2,
+            "cached_flow_interval_frames": 2,
             "mog2_history": 500,
             "mog2_var_threshold": 16,
             "mog2_detect_shadows": False,

@@ -1,6 +1,6 @@
 """Pobierz pojedynczą sekwencję CDnet 2014 z oficjalnego archiwum.
 
-Dane zostają lokalnie w data/cdnet2014/ (ignorowanym przez Git).
+Domyślny magazyn surowych danych: katalog ../data/cdnet2014 obok repo.
 """
 from __future__ import annotations
 
@@ -13,19 +13,21 @@ import zipfile
 from pathlib import Path, PurePosixPath
 
 BASE_URL = "https://changedetection.net/static/dataset/"
+DEFAULT_DATA_ROOT = Path(__file__).resolve().parent.parent / "data" / "cdnet2014"
 SEQUENCES = {
     "pedestrians": "baseline/pedestrians.zip",
     "highway": "baseline/highway.zip",
+    "canoe": "dynamicBackground/canoe.zip",
     "fountain01": "dynamicBackground/fountain01.zip",
 }
 MAX_ARCHIVE_BYTES = 100_000_000
 MAX_EXTRACTED_BYTES = 500_000_000
 
 
-def download_sequence(name: str, root: str | Path = "data/cdnet2014") -> Path:
+def download_sequence(name: str, root: str | Path | None = None) -> Path:
     if name not in SEQUENCES:
         raise ValueError(f"Dozwolone sekwencje: {', '.join(SEQUENCES)}")
-    root = Path(root).resolve()
+    root = Path(root if root is not None else DEFAULT_DATA_ROOT).resolve()
     category = SEQUENCES[name].split("/", 1)[0]
     destination = root / category
     sequence_dir = destination / name
@@ -74,7 +76,7 @@ def download_sequence(name: str, root: str | Path = "data/cdnet2014") -> Path:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("sequence", choices=SEQUENCES)
-    parser.add_argument("--root", default="data/cdnet2014")
+    parser.add_argument("--root", default=None)
     args = parser.parse_args()
     print(download_sequence(args.sequence, args.root))
 

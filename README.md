@@ -248,16 +248,16 @@ oraz klasyczny MOG2. Tylko te dwie rodziny I²D mają w tym porównaniu
 współrzędne przestrzenne zgodne z maskami CDnet. Kolor, rytm, widmo i
 opisowe Λ/τ NIE są domyślnie zaliczane jako pikselowa maska ruchu.
 
-Mały, oficjalny przykład do uruchomienia lokalnie (dane są ignorowane
-przez Git):
+Mały, oficjalny przykład do uruchomienia lokalnie (surowe dane są
+domyślnie w `../data/cdnet2014` obok repo, poza Git):
 
 ```
 python download_cdnet.py pedestrians
-python cdnet_benchmark.py data/cdnet2014/baseline/pedestrians --output benchmark_reports/pedestrians.json
+python cdnet_benchmark.py ../data/cdnet2014/baseline/pedestrians --output benchmark_reports/pedestrians.json
 ```
 
 Źródło i opis etykiet: https://changedetection.net/dataset2014/ .
-Skrypt akceptuje także `highway` i `fountain01`. Dla każdej sekwencji
+Skrypt akceptuje także `highway`, `canoe` i `fountain01`. Dla każdej sekwencji
 raportuje precision, recall, F1, fałszywe alarmy i czas na klatkę.
 Do oceny trafiają tylko klatki z `temporalROI.txt` oraz piksele z
 etykietami 0 (tło) lub 255 (ruch), wewnątrz `ROI.bmp`; etykiety 50,
@@ -268,6 +268,49 @@ ruchu/tła, nie wykrywanie manipulacji, intencji lub anomalii Ped2.
 Rzeczywisty pilotaż na dwóch sekwencjach i jego ograniczenia opisuje
 [`RESULT_CDNET_PILOT.md`](RESULT_CDNET_PILOT.md). W tym pilotażu fuzja
 nie poprawiła wyniku względem pojedynczego detektora.
+
+Dalsza, jawnie **eksploracyjna** próba pola wektorowego jest w
+[`RESULT_CDNET_VECTOR_EXPLORATION.md`](RESULT_CDNET_VECTOR_EXPLORATION.md).
+MOG2 połączony z kierunkowo spójnym ruchem poprawił F1 na obu
+sekwencjach, lecz był ok. 5–6× wolniejszy od MOG2. To była faza
+eksploracyjna; następną parę sekwencji opisuje osobny raport poniżej.
+
+Sprawdzenie bez zmian progów na dwóch nowych sekwencjach jest w
+[`RESULT_CDNET_INDEPENDENT_v0.1.md`](RESULT_CDNET_INDEPENDENT_v0.1.md):
+F1 rośnie na `highway` i `canoe`, ale metoda nadal jest 3.8–4.0×
+wolniejsza od MOG2. Wszystkie surowe klatki CDnet są trzymane poza
+repo w `../data/cdnet2014`.
+
+Próba zmniejszenia kosztu (ROI z rzadkim LK vs. przepływ co drugą
+klatkę) jest w [`RESULT_CDNET_ROI_SUBSAMPLE_v0.1.md`](RESULT_CDNET_ROI_SUBSAMPLE_v0.1.md).
+Na `highway` i `canoe` przeliczanie pola co 2 klatki zachowuje prawie
+cały F1 pełnej fuzji przy około 1.6× krótszym czasie; rzadki LK w ROI
+wyraźnie traci recall. To wynik eksploracyjny na ponownie użytych danych.
+
+### Film względem zdrowej referencji
+
+Na stronie `/vector-reference` można wgrać zdrowy film referencyjny
+i badany film **tego samego kadru, rozdzielczości i FPS**. Kod
+`vector_reference.py` opisuje każdą parę klatek cechami pola wektorów
+ruchu: medianą i 90. percentylem jego długości, spójnością kierunku
+oraz średnią bezwzględną wirowością. Na pierwszych 60% zdrowych par
+kalibruje medianę/MAD, a na pozostałych 40% próg kontrolny; badany film
+nie uczestniczy w kalibracji. Wynik to odchylenie RMS z czterech
+znormalizowanych kanałów, seria kolejnych przekroczeń i wykres w czasie.
+
+To adaptacja **metody zdrowej referencji** z analizy łożysk, nie
+połączenie obrazu z pomiarem drgań. Chronoproces podpowiedział jawne
+uporządkowanie czasu, ale czas z FPS jest tylko nominalny: bez
+rzeczywistych timestampów, rodziny trajektorii Γ(t,s) i osobnych rzutów
+M/S/G/K ten moduł **nie jest pełnym Chronoprocesem**. Progi nie były
+walidowane na niezależnym, oznaczonym zbiorze rzeczywistych filmów;
+wyniku nie należy czytać jako prawdopodobieństwa usterki.
+
+Bez panelu:
+
+```
+python vector_reference.py zdrowy.avi badany.avi --output benchmark_reports/vector_reference.json
+```
 
 ## 🧪 Testy
 

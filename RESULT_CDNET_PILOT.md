@@ -3,12 +3,12 @@
 To porównanie dotyczy **pikselowego wykrywania ruchu/tła**, nie wykrywania
 manipulacji obrazu ani zdarzeń anomalnych. Użyto oficjalnych sekwencji
 `baseline/pedestrians` i `dynamicBackground/fountain01`. Dane pobrane przez
-`download_cdnet.py` pozostają lokalne i są ignorowane przez Git; szczegółowy
+`download_cdnet.py` pozostają lokalne w `../data/cdnet2014`, poza Git; szczegółowy
 raport JSON powstaje po uruchomieniu polecenia poniżej.
 
 ```
 python download_cdnet.py pedestrians fountain01
-python cdnet_benchmark.py data/cdnet2014/baseline/pedestrians data/cdnet2014/dynamicBackground/fountain01 --output benchmark_reports/cdnet_two_sequences.json
+python cdnet_benchmark.py ../data/cdnet2014/baseline/pedestrians ../data/cdnet2014/dynamicBackground/fountain01 --output benchmark_reports/cdnet_two_sequences.json
 ```
 
 | Sekwencja | Metoda | F1 | Precision | Recall | Średni czas/klatkę |

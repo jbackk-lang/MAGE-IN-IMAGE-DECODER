@@ -36,6 +36,7 @@ from meta_dynamics_v1 import compute_reference_thresholds, compute_video_meta_st
 from contour_curvature import compute_reference_threshold, extract_contours, contour_curvatures
 from stereo_overlay import make_overlays
 from anomaly_similarity import compare_anomaly_similarity
+from vector_reference import analyze_video_pair
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # 20MB, demo/dashboard, nie produkcja
@@ -77,6 +78,25 @@ def encode_b64(img_bgr: np.ndarray) -> str:
     if not ok:
         raise RuntimeError("nie udalo sie zakodowac obrazu")
     return "data:image/png;base64," + base64.b64encode(buf.tobytes()).decode("ascii")
+
+
+def vector_score_chart(scores: list[float], threshold: float) -> np.ndarray:
+    """Prosty wykres lokalny bez zewnętrznej biblioteki/CDN."""
+    canvas = np.full((270, 820, 3), (27, 31, 38), dtype=np.uint8)
+    left, right, top, bottom = 55, 795, 20, 230
+    cv2.rectangle(canvas, (left, top), (right, bottom), (75, 80, 90), 1)
+    maximum = max(max(scores), threshold, 1.0) * 1.1
+    y_threshold = int(bottom - threshold / maximum * (bottom - top))
+    cv2.line(canvas, (left, y_threshold), (right, y_threshold), (0, 170, 240), 1)
+    cv2.putText(canvas, "healthy threshold", (left + 5, max(top + 15, y_threshold - 6)),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.42, (0, 170, 240), 1)
+    if scores:
+        xs = np.linspace(left, right, len(scores)).astype(np.int32)
+        ys = np.clip(bottom - np.asarray(scores) / maximum * (bottom - top), top, bottom).astype(np.int32)
+        cv2.polylines(canvas, [np.column_stack((xs, ys))], False, (225, 175, 65), 2)
+    cv2.putText(canvas, "kolejne pary klatek", (left, 256),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (205, 210, 215), 1)
+    return canvas
 
 
 def draw_detections(frame_bgr: np.ndarray, detections: List[Detection], block_size: int) -> np.ndarray:
@@ -371,6 +391,43 @@ INDEX_TEMPLATE = BASE_STYLE + """
     <p>Porównaj własny obraz z przykładem prawidłowym i anomalnym.</p>
     <span class="badge experimental">heurystyka, nie diagnoza</span>
   </a>
+  <a class="card" href="{{ url_for('vector_reference_page') }}">
+    <h3>Pole wektorowe + zdrowa referencja</h3>
+    <p>Dwa filmy: wzorzec zdrowy i badany, wynik w czasie.</p>
+    <span class="badge experimental">eksploracyjne, bez diagnozy</span>
+  </a>
+</div>
+"""
+
+VECTOR_REFERENCE_TEMPLATE = BASE_STYLE + """
+<header>
+  <a class="back" href="{{ url_for('index') }}">&larr; wszystkie moduły</a>
+  <h1>Pole wektorowe względem zdrowego nagrania</h1>
+  <p>Ruch pomiędzy kolejnymi klatkami porównany z osobną, zdrową referencją.</p>
+</header>
+<div class="module-page">
+  <div class="status-note">Wymagane są dwa filmy z tego samego kadru, o tej samej
+    rozdzielczości i FPS. Wynik jest odchyleniem cech ruchu, nie
+    prawdopodobieństwem uszkodzenia. Czas jest nominalny z FPS, bez pomiaru
+    rzeczywistych timestampów. To nie jest pełny Chronoproces.</div>
+  <form class="upload" method="post" enctype="multipart/form-data">
+    <label>Zdrowa referencja: <input type="file" name="healthy" accept="video/*" required></label><br><br>
+    <label>Film badany: <input type="file" name="test" accept="video/*" required></label><br><br>
+    <input type="submit" value="Porównaj pole ruchu">
+  </form>
+  {% if error %}<div class="status-note">Błąd: {{ error }}</div>{% endif %}
+  {% if chart %}
+    <div class="stats">Próg zdrowej referencji: {{ threshold }} &nbsp;|&nbsp;
+      odsetek par klatek ponad progiem: {{ alert_fraction }} &nbsp;|&nbsp;
+      najdłuższa seria: {{ longest_run }} par ({{ longest_seconds }} s).<br>
+      Mediana wyniku: {{ median_score }} &nbsp;|&nbsp; maksimum: {{ max_score }} &nbsp;|&nbsp;
+      par klatek: {{ n_pairs }}.<br>
+      Kontrola zdrowej referencji: {{ validation_pairs }} par,
+      {{ validation_alert_fraction }} ponad progiem.</div>
+    <div class="compare"><figure><img src="{{ chart }}"><figcaption>
+      Odchylenie cech wektorowych w kolejnych parach klatek; linia pomarańczowa
+      to próg z osobnego fragmentu referencji.</figcaption></figure></div>
+  {% endif %}
 </div>
 """
 
@@ -535,6 +592,41 @@ def similarity_page():
         except (ValueError, cv2.error) as exc:
             view["error"] = str(exc)
     return render_template_string(SIMILARITY_TEMPLATE, **view)
+
+
+@app.route("/vector-reference", methods=["GET", "POST"])
+def vector_reference_page():
+    view = {"chart": None, "error": None}
+    if request.method == "POST":
+        try:
+            with tempfile.TemporaryDirectory() as temporary:
+                paths = []
+                for key in ("healthy", "test"):
+                    upload = request.files.get(key)
+                    if not upload or not upload.filename:
+                        raise ValueError("Wybierz zdrowy i badany film")
+                    suffix = os.path.splitext(upload.filename)[1].lower()
+                    if suffix not in (".mp4", ".avi", ".mov", ".mkv", ".webm"):
+                        raise ValueError("Obsługiwane filmy: MP4/AVI/MOV/MKV/WEBM")
+                    path = os.path.join(temporary, key + suffix)
+                    upload.save(path)
+                    paths.append(path)
+                report = analyze_video_pair(*paths)
+            view.update(
+                chart=encode_b64(vector_score_chart(report["scores"], report["threshold"])),
+                threshold=f"{report['threshold']:.2f}",
+                alert_fraction=f"{report['alert_fraction']:.1%}",
+                longest_run=report["longest_alert_run_pairs"],
+                longest_seconds=f"{report['longest_alert_run_pairs'] / report['fps']:.2f}",
+                median_score=f"{report['median_score']:.2f}",
+                max_score=f"{report['max_score']:.2f}",
+                n_pairs=report["n_pairs"],
+                validation_pairs=report["reference_validation_pairs"],
+                validation_alert_fraction=f"{report['reference_validation_alert_fraction']:.1%}",
+            )
+        except (ValueError, cv2.error) as exc:
+            view["error"] = str(exc)
+    return render_template_string(VECTOR_REFERENCE_TEMPLATE, **view)
 
 
 @app.route("/demo/<name>", methods=["GET", "POST"])

@@ -4,8 +4,11 @@ import numpy as np
 import pytest
 import warnings
 
-from cdnet_benchmark import _new_counts, _update_counts, run_benchmark, run_sequence
-from download_cdnet import download_sequence
+from cdnet_benchmark import (
+    _coherent_flow_mask, _new_counts, _sparse_candidate_mask,
+    _update_counts, run_benchmark, run_sequence,
+)
+from download_cdnet import DEFAULT_DATA_ROOT, download_sequence
 from i2d_core import Frame, detect_twist
 
 
@@ -42,7 +45,9 @@ def test_benchmark_runs_three_methods_and_reports_per_sequence(tmp_path):
     result = run_benchmark([sequence])
     assert result["status"] == "COMPLETE"
     assert result["sequences"][0]["evaluated_frames"] == 3
-    for method in ("defect", "defect_twist_fusion", "mog2"):
+    for method in ("defect", "defect_motion_pixels", "defect_twist_fusion",
+                   "fusion_motion_pixels", "vector_flow", "defect_vector_fusion",
+                   "mog2", "mog2_vector_fusion", "mog2_sparse_lk", "mog2_cached_flow_2"):
         metrics = result["sequences"][0]["methods"][method]
         assert metrics["tp"] + metrics["fp"] + metrics["fn"] + metrics["tn"] == 3 * (32 * 32 - 2)
         assert 0 <= metrics["f1"] <= 1
@@ -63,9 +68,41 @@ def test_downloader_rejects_unknown_sequence_before_network(tmp_path):
         download_sequence("unknown", tmp_path)
 
 
+def test_default_raw_store_is_sibling_data_directory():
+    assert DEFAULT_DATA_ROOT.name == "cdnet2014"
+    assert DEFAULT_DATA_ROOT.parent.name == "data"
+    assert "MAGE-IN-IMAGE-DECODER" not in DEFAULT_DATA_ROOT.parts
+
+
 def test_twist_handles_partial_edge_blocks_without_empty_mean():
     frame = Frame(0, 0.0, np.zeros((33, 33, 3), dtype=np.uint8))
     frame.L = np.zeros((33, 33), dtype=np.uint8)
     with warnings.catch_warnings():
         warnings.simplefilter("error", RuntimeWarning)
         assert detect_twist([frame], block_size=16) == []
+
+
+def test_vector_mask_requires_shared_direction_not_just_large_vectors():
+    coherent = np.zeros((16, 16, 2), dtype=np.float32)
+    coherent[:, :, 0] = 2.0
+    assert _coherent_flow_mask(coherent).all()
+
+    opposing = coherent.copy()
+    opposing[:, 8:, 0] = -2.0
+    assert not _coherent_flow_mask(opposing).any()
+
+    partial = np.zeros((17, 17, 2), dtype=np.float32)
+    partial[16, 16, 1] = 2.0
+    result = _coherent_flow_mask(partial)
+    assert result[16, 16]
+    assert not result[:16, :16].any()
+
+
+def test_sparse_lk_has_no_candidates_and_tracks_coherent_shift():
+    rng = np.random.default_rng(42)
+    before = rng.integers(0, 256, size=(128, 128), dtype=np.uint8)
+    after = np.roll(before, 2, axis=1)
+    empty_roi = np.zeros((128, 128), dtype=bool)
+    assert not _sparse_candidate_mask(before, after, empty_roi).any()
+    full_roi = np.ones((128, 128), dtype=bool)
+    assert _sparse_candidate_mask(before, after, full_roi).any()

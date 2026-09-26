@@ -32,7 +32,48 @@ def collect(paths):
     return sum("::" in l for l in p.stdout.splitlines())
 
 
-def run_local():
+def run_local(part="all"):
+    """part: meta | calib | contour | tests | all. Kroki osobno, bo razem przekraczaja pamiec/czas maszyny wirtualnej
+    (poprawka techniczna przed pierwszym wynikiem - patrz CLAIM_AUDIT_ADDENDUM_0.md)."""
+    if part == "all":
+        for p in ("meta", "calib", "contour", "tests"):
+            run_local(p)
+        return
+    out = {}
+    if part == "meta":
+        import real_meta_dynamics_ped2 as rm
+        with contextlib.redirect_stdout(io.StringIO()):
+            r = rm.run_real_test(verbose=False)
+        out["meta_real"] = json.loads(json.dumps(r, default=float))
+        out["meta_real_alpha"] = float(getattr(rm, "ALPHA_CORR"))
+    if part == "calib":
+        import calibrate_rho_threshold as cr
+        with contextlib.redirect_stdout(io.StringIO()):
+            out["calibration"] = json.loads(json.dumps(cr.run_calibration(verbose=False), default=float))
+    if part == "contour":
+        import real_contour_curvature_casia2 as rc
+        with contextlib.redirect_stdout(io.StringIO()):
+            res = rc.run_real_test(verbose=False)
+        out["contour_real"] = [json.loads(json.dumps(getattr(x, "__dict__", x), default=float)) for x in res]
+        cal = REPO / "data" / "ucsd_ped2_calibration" / "Test"
+        tst = REPO / "data" / "ucsd_ped2" / "Test"
+        out["dirs"] = {"calibration_clips": sorted(p.name for p in cal.iterdir() if p.is_dir()) if cal.exists() else [],
+                       "test_clips": sorted(p.name for p in tst.iterdir() if p.is_dir()) if tst.exists() else [],
+                       "casia_images": sorted(p.name for p in (REPO / "data" / "casia2_splicing_sample").glob("*.jpg"))}
+    if part == "tests":
+        tests = {"tests_dir": collect(["tests"]), "tests_i2d_core": collect(["tests/test_i2d_core.py"]),
+                 "meta": collect(["test_meta_dynamics_v1.py", "test_meta_dynamics_ped2_real.py"]),
+                 "contour": collect(["test_contour_curvature.py"])}
+        p = subprocess.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests", "test_meta_dynamics_v1.py",
+                            "test_meta_dynamics_ped2_real.py", "test_contour_curvature.py"], cwd=REPO, capture_output=True,
+                           text=True, timeout=170)
+        tests["run_tail"], tests["returncode"] = p.stdout.strip().splitlines()[-1:], p.returncode
+        out["tests"] = tests
+    for k, v in out.items():
+        save(k, v)
+
+
+def _old_run_local_unused():
     out = {}
     import real_meta_dynamics_ped2 as rm
     with contextlib.redirect_stdout(io.StringIO()):
@@ -70,7 +111,7 @@ def run_cdnet(path):
 
 if __name__ == "__main__":
     if sys.argv[1] == "local":
-        run_local()
+        run_local(sys.argv[2] if len(sys.argv) > 2 else "all")
     else:
         run_cdnet(sys.argv[2])
     print(OUT.read_text(encoding="utf-8")[:4000])

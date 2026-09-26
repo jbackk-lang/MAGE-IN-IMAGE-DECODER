@@ -18,7 +18,8 @@ import cv2
 import numpy as np
 
 from i2d_core import Frame, split_layers
-from meta_dynamics_v1 import RHO_V3_K, compute_region_reference, region_rho_series
+from meta_dynamics_v1 import (DEFAULT_GRID, RHO_V3_K, region_energy_series, region_reference_from_energies,
+                              rho_from_energies)
 
 DATA = os.environ.get("PED2_FULL", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "ucsd_ped2_full"))
 REF_CLIPS = [f"Train{i:03d}" for i in range(1, 13)]          # referencja zdrowa
@@ -40,6 +41,11 @@ def load_clip(split: str, clip: str):
     return frames
 
 
+def clip_energy(split: str, clip: str) -> np.ndarray:
+    """Energia regionow jednego klipu; klatki zwalniane od razu (pelny zbior nie miesci sie w pamieci)."""
+    return region_energy_series(load_clip(split, clip), DEFAULT_GRID)
+
+
 def gt_ranges() -> dict[str, tuple[int, int]]:
     txt = open(os.path.join(DATA, "Test", "UCSDped2.m"), encoding="utf-8", errors="ignore").read()
     rng = re.findall(r"gt_frame\s*=\s*\[(\d+):(\d+)\]", txt)
@@ -53,17 +59,17 @@ def gt_mask(n: int, a: int, b: int) -> np.ndarray:
 
 
 def calibrate() -> dict:
-    ref_frames = [load_clip("Train", c) for c in REF_CLIPS]
-    normal = [load_clip("Train", c) for c in NORMAL_CAL]
+    ref_E = [clip_energy("Train", c) for c in REF_CLIPS]
+    normal = [clip_energy("Train", c) for c in NORMAL_CAL]
     gt = gt_ranges()
-    dev = {c: load_clip("Test", c) for c in DEV_CLIPS}
+    dev = {c: clip_energy("Test", c) for c in DEV_CLIPS}
     rows = []
     for k in K_GRID:
-        ref = compute_region_reference(ref_frames, k=k)
-        fa_norm = float(np.mean(np.concatenate([region_rho_series(f, ref)[0] for f in normal])))
+        ref = region_reference_from_energies(ref_E, k=k)
+        fa_norm = float(np.mean(np.concatenate([rho_from_energies(e, ref)[0] for e in normal])))
         ng, g = [], []
-        for c, fr in dev.items():
-            rho = region_rho_series(fr, ref)[0]
+        for c, e in dev.items():
+            rho = rho_from_energies(e, ref)[0]
             m = gt_mask(len(rho), *gt[c])
             ng += rho[~m].tolist()
             g += rho[m].tolist()
@@ -81,11 +87,11 @@ def fisher_greater(a, b, c, d) -> float:
 
 
 def evaluate() -> dict:
-    ref = compute_region_reference([load_clip("Train", c) for c in REF_CLIPS], k=RHO_V3_K)
+    ref = region_reference_from_energies([clip_energy("Train", c) for c in REF_CLIPS], k=RHO_V3_K)
     gt = gt_ranges()
     per, G, NG = {}, [], []
     for c in HELDOUT:
-        rho = region_rho_series(load_clip("Test", c), ref)[0]
+        rho = rho_from_energies(clip_energy("Test", c), ref)[0]
         m = gt_mask(len(rho), *gt[c])
         per[c] = {"n": len(rho), "n_gt": int(m.sum()), "det_gt": float(rho[m].mean()) if m.any() else None,
                   "fa_nongt": float(rho[~m].mean()) if (~m).any() else None}

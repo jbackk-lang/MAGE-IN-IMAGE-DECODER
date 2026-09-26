@@ -57,3 +57,9 @@ klatek non-gt w odłożonych klipach. ρ mówi „gdzie jest nietypowy ruch wzgl
 ## 7. Dane
 Pełny UCSD Ped2 z mirrora `github.com/junaidwahid/UCSD-Anomaly-dataset` (commit c1d0517171d9d468f65a86baec834a29e63e42c5),
 folder `UCSD_Anomaly_Dataset.v1p2/UCSDped2`, poza repo (`PED2_FULL`, domyślnie `../data/ucsd_ped2_full`).
+
+## Aneks 1 (techniczny, przed jakimkolwiek wynikiem na Ped2 v0.3)
+Pierwsze uruchomienie `ped2_v03.py calibrate` zostało zabite bez komunikatu (brak pamięci: 21 klipów z warstwami w RAM).
+Dodano `region_reference_from_energies` i `rho_from_energies` (te same wzory, liczenie klip po klipie); `ped2_v03.py`
+korzysta z nich. Bramka syntetyczna przeszła przed tą zmianą (10/10) i jest uruchamiana ponownie po niej. Wyników
+kalibracji ani oceny nie oglądano.

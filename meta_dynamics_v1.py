@@ -196,18 +196,27 @@ def compute_region_reference(clips, grid: Tuple[int, int] = DEFAULT_GRID, k: flo
     przez granice klipow), potem laczona."""
     if len(clips) and hasattr(clips[0], "M"):
         clips = [clips]
-    E = np.concatenate([region_energy_series(c, grid) for c in clips], axis=0)
+    return region_reference_from_energies([region_energy_series(c, grid) for c in clips], grid=grid, k=k)
+
+
+def region_reference_from_energies(energies, grid: Tuple[int, int] = DEFAULT_GRID, k: float = RHO_V3_K) -> RegionReference:
+    """Jak compute_region_reference, ale z gotowych macierzy energii [n_frames, n_regions] per klip - pozwala liczyc
+    dlugie zbiory klip po klipie bez trzymania wszystkich klatek w pamieci."""
+    E = np.concatenate([np.asarray(e, dtype=np.float64) for e in energies], axis=0)
     med = np.median(E, axis=0)
     mad = np.maximum(MAD_TO_STD * np.median(np.abs(E - med), axis=0), MAD_FLOOR)
     return RegionReference(median=med, mad=mad, k=float(k), grid=grid)
 
 
+def rho_from_energies(E: np.ndarray, ref: RegionReference) -> Tuple[np.ndarray, np.ndarray]:
+    exceed = np.asarray(E) > ref.thresholds
+    return exceed.any(axis=1).astype(int), exceed
+
+
 def region_rho_series(frames, ref: RegionReference) -> Tuple[np.ndarray, np.ndarray]:
     """(rho [n_frames] 0/1, exceed [n_frames, n_regions] bool) - ktore regiony
     przekroczyly wlasny prog w danej klatce."""
-    E = region_energy_series(frames, ref.grid)
-    exceed = E > ref.thresholds
-    return exceed.any(axis=1).astype(int), exceed
+    return rho_from_energies(region_energy_series(frames, ref.grid), ref)
 
 
 __all__ = [
@@ -224,4 +233,6 @@ __all__ = [
     "RegionReference",
     "compute_region_reference",
     "region_rho_series",
+    "region_reference_from_energies",
+    "rho_from_energies",
 ]

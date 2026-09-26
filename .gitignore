@@ -3,3 +3,5 @@
 __pycache__/
 data/cdnet2014/
 benchmark_reports/
+docs/audit/__pycache__/
+tools/__pycache__/

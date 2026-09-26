@@ -1,0 +1,696 @@
+{
+  "meta_real": {
+    "Test001": {
+      "n_frames": 180,
+      "n_gt": 120,
+      "n_non_gt": 60,
+      "lambda_gt_mean": 0.3042880643097227,
+      "lambda_non_gt_mean": 0.2904640906971491,
+      "mannwhitney_p": 0.19559354011838437,
+      "rank_biserial_r": 0.118611111111111,
+      "effect_size_label": "maly",
+      "significant_mannwhitney_bonferroni": false,
+      "rho_gt_rate": 0.0,
+      "rho_non_gt_rate": 0.0,
+      "fisher_p": 1.0,
+      "fisher_odds_ratio": NaN,
+      "significant_fisher_bonferroni": false
+    },
+    "Test002": {
+      "n_frames": 180,
+      "n_gt": 86,
+      "n_non_gt": 94,
+      "lambda_gt_mean": 0.2421102994532216,
+      "lambda_non_gt_mean": 0.18363034907834533,
+      "mannwhitney_p": 9.90574462567302e-22,
+      "rank_biserial_r": 0.8275606135576448,
+      "effect_size_label": "duzy",
+      "significant_mannwhitney_bonferroni": true,
+      "rho_gt_rate": 0.0,
+      "rho_non_gt_rate": 0.0,
+      "fisher_p": 1.0,
+      "fisher_odds_ratio": NaN,
+      "significant_fisher_bonferroni": false
+    },
+    "Test003": {
+      "n_frames": 150,
+      "n_gt": 146,
+      "n_non_gt": 4,
+      "lambda_gt_mean": 0.2565486093843265,
+      "lambda_non_gt_mean": 0.25065150226914107,
+      "mannwhitney_p": 0.5694070786304728,
+      "rank_biserial_r": 0.17465753424657526,
+      "effect_size_label": "maly",
+      "significant_mannwhitney_bonferroni": false,
+      "rho_gt_rate": 0.0,
+      "rho_non_gt_rate": 0.0,
+      "fisher_p": 1.0,
+      "fisher_odds_ratio": NaN,
+      "significant_fisher_bonferroni": false
+    }
+  },
+  "meta_real_alpha": 0.008333333333333333,
+  "calibration": {
+    "per_k": {
+      "3.5": {
+        "false_alarm_rate": 0.016666666666666666,
+        "calib_sensitivity": 0.0035842293906810036,
+        "calib_non_gt_rate": 0.0,
+        "cond1_false_alarm_ok": true,
+        "cond2_sensitivity_ok": false,
+        "cond3_discriminates": true,
+        "passes": false
+      },
+      "3.0": {
+        "false_alarm_rate": 0.016666666666666666,
+        "calib_sensitivity": 0.014336917562724014,
+        "calib_non_gt_rate": 0.0,
+        "cond1_false_alarm_ok": true,
+        "cond2_sensitivity_ok": false,
+        "cond3_discriminates": true,
+        "passes": false
+      },
+      "2.5": {
+        "false_alarm_rate": 0.016666666666666666,
+        "calib_sensitivity": 0.035842293906810034,
+        "calib_non_gt_rate": 0.0,
+        "cond1_false_alarm_ok": true,
+        "cond2_sensitivity_ok": false,
+        "cond3_discriminates": true,
+        "passes": false
+      },
+      "2.0": {
+        "false_alarm_rate": 0.08333333333333333,
+        "calib_sensitivity": 0.13978494623655913,
+        "calib_non_gt_rate": 0.0,
+        "cond1_false_alarm_ok": true,
+        "cond2_sensitivity_ok": true,
+        "cond3_discriminates": true,
+        "passes": true
+      },
+      "1.5": {
+        "false_alarm_rate": 0.26666666666666666,
+        "calib_sensitivity": 0.26881720430107525,
+        "calib_non_gt_rate": 0.0,
+        "cond1_false_alarm_ok": false,
+        "cond2_sensitivity_ok": true,
+        "cond3_discriminates": true,
+        "passes": false
+      },
+      "1.0": {
+        "false_alarm_rate": 0.4,
+        "calib_sensitivity": 0.5376344086021505,
+        "calib_non_gt_rate": 0.0392156862745098,
+        "cond1_false_alarm_ok": false,
+        "cond2_sensitivity_ok": true,
+        "cond3_discriminates": true,
+        "passes": false
+      },
+      "0.75": {
+        "false_alarm_rate": 0.5333333333333333,
+        "calib_sensitivity": 0.6702508960573477,
+        "calib_non_gt_rate": 0.2549019607843137,
+        "cond1_false_alarm_ok": false,
+        "cond2_sensitivity_ok": true,
+        "cond3_discriminates": true,
+        "passes": false
+      },
+      "0.5": {
+        "false_alarm_rate": 0.6166666666666667,
+        "calib_sensitivity": 0.7813620071684588,
+        "calib_non_gt_rate": 0.39215686274509803,
+        "cond1_false_alarm_ok": false,
+        "cond2_sensitivity_ok": true,
+        "cond3_discriminates": true,
+        "passes": false
+      }
+    },
+    "chosen_k": 2.0
+  },
+  "contour_real": [
+    {
+      "name": "Tp_D_CRN_M_N_pla00035_pla00033_10997",
+      "kind": "splicing",
+      "n_boundary": 37,
+      "n_bg": 16,
+      "mean_boundary": 0.10311697666744121,
+      "mean_bg": 0.10062276057782861,
+      "p_value": 0.30382630655224163,
+      "significant": false
+    },
+    {
+      "name": "Tp_D_CRN_S_N_nat00033_cha00086_11502",
+      "kind": "splicing",
+      "n_boundary": 38,
+      "n_bg": 26,
+      "mean_boundary": 0.020984041405887485,
+      "mean_bg": 0.028302121613109944,
+      "p_value": 0.9996235500519769,
+      "significant": false
+    },
+    {
+      "name": "Tp_S_NNN_S_O_pla00077_pla00077_11212",
+      "kind": "copy-move",
+      "n_boundary": 39,
+      "n_bg": 25,
+      "mean_boundary": 0.03762369945120624,
+      "mean_bg": 0.03706027290817848,
+      "p_value": 0.5601559442217678,
+      "significant": false
+    },
+    {
+      "name": "Tp_S_NRN_S_N_pla00005_pla00005_10937",
+      "kind": "copy-move",
+      "n_boundary": 30,
+      "n_bg": 29,
+      "mean_boundary": 0.05373283844085143,
+      "mean_bg": 0.0433756301223836,
+      "p_value": 0.0014088793131647923,
+      "significant": true
+    }
+  ],
+  "dirs": {
+    "calibration_clips": [
+      "Test004",
+      "Test005"
+    ],
+    "test_clips": [
+      "Test001",
+      "Test002",
+      "Test003"
+    ],
+    "casia_images": [
+      "Tp_D_CRN_M_N_pla00035_pla00033_10997.jpg",
+      "Tp_D_CRN_S_N_nat00033_cha00086_11502.jpg",
+      "Tp_S_NNN_S_O_pla00077_pla00077_11212.jpg",
+      "Tp_S_NRN_S_N_pla00005_pla00005_10937.jpg"
+    ]
+  },
+  "tests": {
+    "tests_dir": 45,
+    "tests_i2d_core": 22,
+    "meta": 11,
+    "contour": 7,
+    "run_tail": [
+      "63 passed in 96.03s (0:01:36)"
+    ],
+    "returncode": 0
+  },
+  "cdnet_rerun": {
+    "task": "cdnet rerun (audyt)",
+    "sequences": [
+      {
+        "sequence": "pedestrians",
+        "processed_frames": 1099,
+        "evaluated_frames": 800,
+        "temporal_roi": [
+          300,
+          1099
+        ],
+        "partial_run": false,
+        "methods": {
+          "defect": {
+            "tp": 478107,
+            "fp": 370933,
+            "fn": 192755,
+            "tn": 67185636,
+            "precision": 0.5631148120229906,
+            "recall": 0.7126756322462742,
+            "f1": 0.6291287201411669,
+            "false_positive_rate": 0.005490702169910376,
+            "mean_ms_per_processed_frame": 8.850025022762596
+          },
+          "defect_motion_pixels": {
+            "tp": 296912,
+            "fp": 86555,
+            "fn": 373950,
+            "tn": 67470014,
+            "precision": 0.7742830543436593,
+            "recall": 0.4425828262742561,
+            "f1": 0.5632245722160729,
+            "false_positive_rate": 0.0012812225558701774,
+            "mean_ms_per_processed_frame": 8.899915377630538
+          },
+          "defect_twist_fusion": {
+            "tp": 446129,
+            "fp": 346535,
+            "fn": 224733,
+            "tn": 67210034,
+            "precision": 0.5628223307731901,
+            "recall": 0.6650086008746955,
+            "f1": 0.6096632379609246,
+            "false_positive_rate": 0.005129552982479024,
+            "mean_ms_per_processed_frame": 34.43035796178965
+          },
+          "fusion_motion_pixels": {
+            "tp": 276622,
+            "fp": 77501,
+            "fn": 394240,
+            "tn": 67479068,
+            "precision": 0.781146663729834,
+            "recall": 0.4123381559843902,
+            "f1": 0.5397581428020898,
+            "false_positive_rate": 0.001147201540090054,
+            "mean_ms_per_processed_frame": 34.50774449497538
+          },
+          "vector_flow": {
+            "tp": 614080,
+            "fp": 3489921,
+            "fn": 56782,
+            "tn": 64066648,
+            "precision": 0.1496295931701771,
+            "recall": 0.9153596417743143,
+            "f1": 0.25721366246528954,
+            "false_positive_rate": 0.05165923982906829,
+            "mean_ms_per_processed_frame": 11.935270427675178
+          },
+          "defect_vector_fusion": {
+            "tp": 458237,
+            "fp": 358560,
+            "fn": 212625,
+            "tn": 67198009,
+            "precision": 0.5610169968792735,
+            "recall": 0.68305702215955,
+            "f1": 0.6160511246192845,
+            "false_positive_rate": 0.005307551956938488,
+            "mean_ms_per_processed_frame": 20.668895450437745
+          },
+          "mog2": {
+            "tp": 662082,
+            "fp": 614789,
+            "fn": 8780,
+            "tn": 66941780,
+            "precision": 0.5185190986403482,
+            "recall": 0.9869123605152773,
+            "f1": 0.679848829382672,
+            "false_positive_rate": 0.009100358545443598,
+            "mean_ms_per_processed_frame": 2.6347145586790317
+          },
+          "mog2_vector_fusion": {
+            "tp": 606472,
+            "fp": 283446,
+            "fn": 64390,
+            "tn": 67273123,
+            "precision": 0.6814920026339505,
+            "recall": 0.9040190083802631,
+            "f1": 0.77713963531055,
+            "false_positive_rate": 0.004195683768368995,
+            "mean_ms_per_processed_frame": 14.618198999100269
+          },
+          "mog2_sparse_lk": {
+            "tp": 356928,
+            "fp": 73119,
+            "fn": 313934,
+            "tn": 67483450,
+            "precision": 0.8299743981471792,
+            "recall": 0.5320438480641324,
+            "f1": 0.6484241658484033,
+            "false_positive_rate": 0.0010823373815801688,
+            "mean_ms_per_processed_frame": 4.4141745222799225
+          },
+          "mog2_cached_flow_2": {
+            "tp": 596410,
+            "fp": 264007,
+            "fn": 74452,
+            "tn": 67292562,
+            "precision": 0.6931638961108393,
+            "recall": 0.8890203946564271,
+            "f1": 0.7789697370629388,
+            "false_positive_rate": 0.003907939729739679,
+            "mean_ms_per_processed_frame": 8.801631574151692
+          }
+        },
+        "environment": "urządzenie (Linux VM), OpenCV 5.0.0.93"
+      },
+      {
+        "sequence": "fountain01",
+        "processed_frames": 1184,
+        "evaluated_frames": 785,
+        "temporal_roi": [
+          400,
+          1184
+        ],
+        "partial_run": false,
+        "methods": {
+          "defect": {
+            "tp": 14691,
+            "fp": 2061835,
+            "fn": 62812,
+            "tn": 91221220,
+            "precision": 0.007074797040826843,
+            "recall": 0.1895539527502161,
+            "f1": 0.013640484877408801,
+            "false_positive_rate": 0.02210299609076911,
+            "mean_ms_per_processed_frame": 2.7507397787120667
+          },
+          "defect_motion_pixels": {
+            "tp": 10149,
+            "fp": 1487852,
+            "fn": 67354,
+            "tn": 91795203,
+            "precision": 0.006775028855120924,
+            "recall": 0.13094976968633473,
+            "f1": 0.012883496328793832,
+            "false_positive_rate": 0.01594986356310908,
+            "mean_ms_per_processed_frame": 2.7781960565837256
+          },
+          "defect_twist_fusion": {
+            "tp": 13040,
+            "fp": 1742727,
+            "fn": 64463,
+            "tn": 91540328,
+            "precision": 0.007426953576414183,
+            "recall": 0.1682515515528431,
+            "f1": 0.014225945987225014,
+            "false_positive_rate": 0.018682139001558216,
+            "mean_ms_per_processed_frame": 11.286219584460246
+          },
+          "fusion_motion_pixels": {
+            "tp": 9025,
+            "fp": 1248763,
+            "fn": 68478,
+            "tn": 92034292,
+            "precision": 0.007175295041771746,
+            "recall": 0.11644710527334426,
+            "f1": 0.013517652706413807,
+            "false_positive_rate": 0.01338681500085948,
+            "mean_ms_per_processed_frame": 11.330276016890918
+          },
+          "vector_flow": {
+            "tp": 52664,
+            "fp": 10151407,
+            "fn": 24839,
+            "tn": 83131648,
+            "precision": 0.005161077377842628,
+            "recall": 0.6795091802897952,
+            "f1": 0.010244345855994423,
+            "false_positive_rate": 0.10882369793742283,
+            "mean_ms_per_processed_frame": 10.845542804052815
+          },
+          "defect_vector_fusion": {
+            "tp": 12252,
+            "fp": 1407159,
+            "fn": 65251,
+            "tn": 91875896,
+            "precision": 0.008631749366462568,
+            "recall": 0.1580842031921345,
+            "f1": 0.01636967788396661,
+            "false_positive_rate": 0.015084829715321824,
+            "mean_ms_per_processed_frame": 13.509570610638301
+          },
+          "mog2": {
+            "tp": 64410,
+            "fp": 3141563,
+            "fn": 13093,
+            "tn": 90141492,
+            "precision": 0.020090624593532135,
+            "recall": 0.8310646039508148,
+            "f1": 0.03923281303106829,
+            "false_positive_rate": 0.033677745652734035,
+            "mean_ms_per_processed_frame": 3.13037735388627
+          },
+          "mog2_vector_fusion": {
+            "tp": 45674,
+            "fp": 1180737,
+            "fn": 31829,
+            "tn": 92102318,
+            "precision": 0.037242001254065724,
+            "recall": 0.5893191231307175,
+            "f1": 0.07005676754755298,
+            "false_positive_rate": 0.012657572160345736,
+            "mean_ms_per_processed_frame": 13.988211893581095
+          },
+          "mog2_sparse_lk": {
+            "tp": 31728,
+            "fp": 663547,
+            "fn": 45775,
+            "tn": 92619508,
+            "precision": 0.04563374204451476,
+            "recall": 0.4093777015083287,
+            "f1": 0.08211413886006072,
+            "false_positive_rate": 0.007113264032787091,
+            "mean_ms_per_processed_frame": 5.171154978043546
+          },
+          "mog2_cached_flow_2": {
+            "tp": 35174,
+            "fp": 673850,
+            "fn": 42329,
+            "tn": 92609205,
+            "precision": 0.049609040032495375,
+            "recall": 0.4538404964969098,
+            "f1": 0.08944130335004392,
+            "false_positive_rate": 0.007223712816866901,
+            "mean_ms_per_processed_frame": 8.670879916393794
+          }
+        },
+        "environment": "chmura, OpenCV 5.0.0.93, 2 przebiegi równolegle"
+      },
+      {
+        "sequence": "canoe",
+        "processed_frames": 1189,
+        "evaluated_frames": 390,
+        "temporal_roi": [
+          800,
+          1189
+        ],
+        "partial_run": false,
+        "methods": {
+          "defect": {
+            "tp": 12426,
+            "fp": 3076,
+            "fn": 1030943,
+            "tn": 28416645,
+            "precision": 0.8015739904528448,
+            "recall": 0.011909497023584178,
+            "f1": 0.02347028108239814,
+            "false_positive_rate": 0.0001082347008262326,
+            "mean_ms_per_processed_frame": 7.995883179152454
+          },
+          "defect_motion_pixels": {
+            "tp": 10062,
+            "fp": 1688,
+            "fn": 1033307,
+            "tn": 28418033,
+            "precision": 0.8563404255319149,
+            "recall": 0.00964375978201384,
+            "f1": 0.019072730184936486,
+            "false_positive_rate": 5.939537548591698e-05,
+            "mean_ms_per_processed_frame": 8.047778973946055
+          },
+          "defect_twist_fusion": {
+            "tp": 10542,
+            "fp": 3002,
+            "fn": 1032827,
+            "tn": 28416719,
+            "precision": 0.7783520378027171,
+            "recall": 0.010103807952891068,
+            "f1": 0.019948661810385526,
+            "false_positive_rate": 0.00010563087512365093,
+            "mean_ms_per_processed_frame": 30.912744491172848
+          },
+          "fusion_motion_pixels": {
+            "tp": 8529,
+            "fp": 1631,
+            "fn": 1034840,
+            "tn": 28418090,
+            "precision": 0.8394685039370079,
+            "recall": 0.008174480936274703,
+            "f1": 0.016191296110500995,
+            "false_positive_rate": 5.738972595825272e-05,
+            "mean_ms_per_processed_frame": 30.991499663601342
+          },
+          "vector_flow": {
+            "tp": 1037762,
+            "fp": 13387948,
+            "fn": 5607,
+            "tn": 15031773,
+            "precision": 0.07193836559864297,
+            "recall": 0.9946260623039405,
+            "f1": 0.13417243521737782,
+            "false_positive_rate": 0.4710795014490114,
+            "mean_ms_per_processed_frame": 10.39990420522632
+          },
+          "defect_vector_fusion": {
+            "tp": 12426,
+            "fp": 3076,
+            "fn": 1030943,
+            "tn": 28416645,
+            "precision": 0.8015739904528448,
+            "recall": 0.011909497023584178,
+            "f1": 0.02347028108239814,
+            "false_positive_rate": 0.0001082347008262326,
+            "mean_ms_per_processed_frame": 18.272623633342224
+          },
+          "mog2": {
+            "tp": 838629,
+            "fp": 1587799,
+            "fn": 204740,
+            "tn": 26831922,
+            "precision": 0.3456228662049729,
+            "recall": 0.8037702864470767,
+            "f1": 0.4833879330692833,
+            "false_positive_rate": 0.055869619550452304,
+            "mean_ms_per_processed_frame": 3.526822455830949
+          },
+          "mog2_vector_fusion": {
+            "tp": 834528,
+            "fp": 1219840,
+            "fn": 208841,
+            "tn": 27199881,
+            "precision": 0.40622128070530694,
+            "recall": 0.7998397498871445,
+            "f1": 0.5387984841837768,
+            "false_positive_rate": 0.042922307365367875,
+            "mean_ms_per_processed_frame": 13.951584272502293
+          },
+          "mog2_sparse_lk": {
+            "tp": 394659,
+            "fp": 927308,
+            "fn": 648710,
+            "tn": 27492413,
+            "precision": 0.29853922223474566,
+            "recall": 0.3782544813963229,
+            "f1": 0.3337022731654193,
+            "false_positive_rate": 0.03262903249472435,
+            "mean_ms_per_processed_frame": 7.3127794785472275
+          },
+          "mog2_cached_flow_2": {
+            "tp": 835423,
+            "fp": 1207792,
+            "fn": 207946,
+            "tn": 27211929,
+            "precision": 0.40887669677444616,
+            "recall": 0.8006975480390925,
+            "f1": 0.5413252968330038,
+            "false_positive_rate": 0.04249837639152052,
+            "mean_ms_per_processed_frame": 8.797228343138993
+          }
+        },
+        "environment": "urządzenie (Linux VM), OpenCV 5.0.0.93"
+      },
+      {
+        "sequence": "highway",
+        "processed_frames": 1700,
+        "evaluated_frames": 1231,
+        "temporal_roi": [
+          470,
+          1700
+        ],
+        "partial_run": false,
+        "methods": {
+          "defect": {
+            "tp": 1614615,
+            "fp": 196101,
+            "fn": 3843374,
+            "tn": 86096610,
+            "precision": 0.8916997475031976,
+            "recall": 0.29582599012200284,
+            "f1": 0.4442648312182157,
+            "false_positive_rate": 0.00227250943593602,
+            "mean_ms_per_processed_frame": 1.8161171005855228
+          },
+          "defect_motion_pixels": {
+            "tp": 1183933,
+            "fp": 50755,
+            "fn": 4274056,
+            "tn": 86241956,
+            "precision": 0.9588924489425669,
+            "recall": 0.21691743973833585,
+            "f1": 0.35379953343034487,
+            "false_positive_rate": 0.0005881725050914207,
+            "mean_ms_per_processed_frame": 1.8404185011727616
+          },
+          "defect_twist_fusion": {
+            "tp": 1497040,
+            "fp": 179436,
+            "fn": 3960949,
+            "tn": 86113275,
+            "precision": 0.8929683455056917,
+            "recall": 0.27428417316341236,
+            "f1": 0.41966426354323694,
+            "false_positive_rate": 0.002079387678525942,
+            "mean_ms_per_processed_frame": 7.282726179405472
+          },
+          "fusion_motion_pixels": {
+            "tp": 1095558,
+            "fp": 44906,
+            "fn": 4362431,
+            "tn": 86247805,
+            "precision": 0.9606247983276982,
+            "recall": 0.20072557859680554,
+            "f1": 0.3320651067757852,
+            "false_positive_rate": 0.000520391577453164,
+            "mean_ms_per_processed_frame": 7.318218030581567
+          },
+          "vector_flow": {
+            "tp": 4243182,
+            "fp": 6623037,
+            "fn": 1214807,
+            "tn": 79669674,
+            "precision": 0.39049295803811795,
+            "recall": 0.777425898073448,
+            "f1": 0.5198637508171913,
+            "false_positive_rate": 0.07675082777269565,
+            "mean_ms_per_processed_frame": 7.073840423527813
+          },
+          "defect_vector_fusion": {
+            "tp": 1433330,
+            "fp": 146470,
+            "fn": 4024659,
+            "tn": 86146241,
+            "precision": 0.9072857323711863,
+            "recall": 0.2626113757283131,
+            "f1": 0.40732394790466153,
+            "false_positive_rate": 0.0016973623647077213,
+            "mean_ms_per_processed_frame": 8.834442355880048
+          },
+          "mog2": {
+            "tp": 4971764,
+            "fp": 1998105,
+            "fn": 486225,
+            "tn": 84294606,
+            "precision": 0.7133224455151166,
+            "recall": 0.9109149908510259,
+            "f1": 0.8000999045853276,
+            "false_positive_rate": 0.0231549684422361,
+            "mean_ms_per_processed_frame": 1.9713495311733662
+          },
+          "mog2_vector_fusion": {
+            "tp": 3985116,
+            "fp": 418416,
+            "fn": 1472873,
+            "tn": 85874295,
+            "precision": 0.9049817283035527,
+            "recall": 0.7301436481458647,
+            "f1": 0.8082152844373602,
+            "false_positive_rate": 0.0048487988747972005,
+            "mean_ms_per_processed_frame": 9.054908262347078
+          },
+          "mog2_sparse_lk": {
+            "tp": 2110035,
+            "fp": 38744,
+            "fn": 3347954,
+            "tn": 86253967,
+            "precision": 0.9819692951206244,
+            "recall": 0.38659568570035596,
+            "f1": 0.5547783237243465,
+            "false_positive_rate": 0.00044898346049181376,
+            "mean_ms_per_processed_frame": 3.363852838237215
+          },
+          "mog2_cached_flow_2": {
+            "tp": 3964380,
+            "fp": 441963,
+            "fn": 1493609,
+            "tn": 85850748,
+            "precision": 0.8996984574283028,
+            "recall": 0.7263444466450921,
+            "f1": 0.803780732440879,
+            "false_positive_rate": 0.005121672443458174,
+            "mean_ms_per_processed_frame": 5.53762004999445
+          }
+        },
+        "environment": "chmura, OpenCV 5.0.0.93, 2 przebiegi równolegle"
+      }
+    ]
+  }
+}

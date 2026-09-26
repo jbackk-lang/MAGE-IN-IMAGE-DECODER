@@ -93,7 +93,8 @@ Wynik testu na realnym podzbiorze UCSD Ped2 (`data/ucsd_ped2/`, patrz
 [`RESULT_META_DYNAMICS_v0.1.md`](RESULT_META_DYNAMICS_v0.1.md) —
 **mieszany**: kontrole syntetyczne przeszły, ale na realnych danych tylko
 1 z 3 klipów testowych dał istotny efekt na Λ, a binarna flaga ρ nie
-zadziałała w ogóle (stała progowa `k=3.5` zdiagnozowana jako zbyt luźna).
+zadziałała w ogóle (stała progowa `k=3.5` okazała się zbyt wysoka - Λ i E nie przekroczyły
+progu nawet w szczycie, więc flaga nie miała szansy zadziałać).
 
 **v0.2 — próba kalibracji `k`, wynik: STOP na bramce.**
 [`PREREG_META_DYNAMICS_RHO_CALIBRATION_v0.1.md`](PREREG_META_DYNAMICS_RHO_CALIBRATION_v0.1.md)
@@ -108,6 +109,9 @@ NIE zostały ponownie dotknięte. Pełny wynik:
 **ocena całościowa: ρ NOT SUPPORTED (żadne k nie daje stabilnego progu),
 Λ pozostaje częściowym tropem (1 z 3 klipów, niepotwierdzone).**
 Traktuj całą gałąź jako zamkniętą eksplorację, nie gotową detekcję.
+Pre-rejestracje META_DYNAMICS i CONTOUR_CURVATURE trafiły do gita w tych
+samych commitach co wyniki, więc kolejność „reguły przed wynikiem”
+potwierdza tylko ich treść, nie historia repozytorium.
 Dashboard pokazuje historyczne `rho` wyłącznie informacyjnie; nie używa
 go jako zwalidowanego alarmu.
 
@@ -242,9 +246,10 @@ do wiarygodnej oceny potrzeba oznaczonych, niezależnych przykładów.
 
 ### Laboratorium porównań CDnet 2014
 
-`cdnet_benchmark.py` porównuje na tych samych klatkach trzy maski:
-`DefectScanner`, `DefectScanner + TwistDetector` przez `FusionEngine`
-oraz klasyczny MOG2. Tylko te dwie rodziny I²D mają w tym porównaniu
+`cdnet_benchmark.py` porównuje na tych samych klatkach 10 masek: trzy
+bazowe (`DefectScanner`, `DefectScanner + TwistDetector` przez
+`FusionEngine` oraz klasyczny MOG2) i 7 wariantów z polem wektorów ruchu
+(opisanych w raportach niżej). Tylko te dwie rodziny I²D mają w tym porównaniu
 współrzędne przestrzenne zgodne z maskami CDnet. Kolor, rytm, widmo i
 opisowe Λ/τ NIE są domyślnie zaliczane jako pikselowa maska ruchu.
 
@@ -266,19 +271,21 @@ i oznacza wynik jako `PARTIAL`. Jedna sekwencja pokazuje działanie kodu,
 ale nie dowodzi przewagi ani uogólnienia. CDnet mierzy wykrywanie
 ruchu/tła, nie wykrywanie manipulacji, intencji lub anomalii Ped2.
 Rzeczywisty pilotaż na dwóch sekwencjach i jego ograniczenia opisuje
-[`RESULT_CDNET_PILOT.md`](RESULT_CDNET_PILOT.md). W tym pilotażu fuzja
-nie poprawiła wyniku względem pojedynczego detektora.
+[`RESULT_CDNET_PILOT.md`](RESULT_CDNET_PILOT.md). W tym pilotażu fuzja nie poprawiła wyniku w praktycznym sensie względem
+pojedynczego detektora (F1: pedestrians −0.020, fountain01 +0.001).
 
 Dalsza, jawnie **eksploracyjna** próba pola wektorowego jest w
 [`RESULT_CDNET_VECTOR_EXPLORATION.md`](RESULT_CDNET_VECTOR_EXPLORATION.md).
 MOG2 połączony z kierunkowo spójnym ruchem poprawił F1 na obu
-sekwencjach, lecz był ok. 5–6× wolniejszy od MOG2. To była faza
+sekwencjach, lecz był ok. 5–6× wolniejszy od MOG2 (czasy zależą od maszyny; w powtórce
+audytu 4.5–5.5×). To była faza
 eksploracyjna; następną parę sekwencji opisuje osobny raport poniżej.
 
 Sprawdzenie bez zmian progów na dwóch nowych sekwencjach jest w
 [`RESULT_CDNET_INDEPENDENT_v0.1.md`](RESULT_CDNET_INDEPENDENT_v0.1.md):
-F1 rośnie na `highway` i `canoe`, ale metoda nadal jest 3.8–4.0×
-wolniejsza od MOG2. Wszystkie surowe klatki CDnet są trzymane poza
+F1 rośnie na `highway` i `canoe`, ale metoda nadal jest 3.8–4.0× wolniejsza od MOG2 (w powtórce audytu
+4.0–4.6×). F1 wszystkich raportów CDnet odtwarza się co do 4 miejsc przy
+ponownym uruchomieniu na surowych klatkach (`docs/audit/`). Wszystkie surowe klatki CDnet są trzymane poza
 repo w `../data/cdnet2014`.
 
 Próba zmniejszenia kosztu (ROI z rzadkim LK vs. przepływ co drugą
@@ -319,9 +326,10 @@ pip install pytest
 pytest tests/ -v
 ```
 
-22 testy: import każdego modułu, tożsamość obiektu dla plików-aliasów,
+45 testów, w tym 22 w `tests/test_i2d_core.py`: import każdego modułu, tożsamość obiektu dla plików-aliasów,
 pozytywna/negatywna kontrola DC-bias, próg adaptacyjny DefectScannera,
-okresowość RhythmAnalyzera (L/V/M), pełne działanie `run_i2d()`. Osobno,
+okresowość RhythmAnalyzera (L/V/M), pełne działanie `run_i2d()`; pozostałe 23 dotyczą podobieństwa, CDnet,
+fuzji/diagnostyki, nakładek stereo i zdrowej referencji. Osobno,
 11 testów dla META_DYNAMICS v0.1/v0.2 (`test_meta_dynamics_v1.py` —
 kontrole syntetyczne k=3.5 i k=2.0 + jednostkowe (w tym jeden
 dokumentujący znany STOP bramki v0.2, patrz `RESULT_META_DYNAMICS_v0.2.md`),

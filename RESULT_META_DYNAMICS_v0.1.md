@@ -79,3 +79,8 @@ maskach pikselowych oryginalnego datasetu, nieużytych w v0.1).
 3 klipy testowe, 4 klipy treningowe, jedna scena (Ped2), jedna siatka
 (4×4). Nie testowano Ped1 (inna scena, dystorsja perspektywy). Wynik nie
 uogólnia się automatycznie na inne sceny/siatki/wielkości okna.
+
+---
+
+**Erratum (audyt twierdzeń, 2026-09-26, `docs/audit/`):** w sekcji o ρ „zbyt luźna” należy czytać jako „zbyt wysoka
+(za surowa)” — flaga nigdy nie zadziałała, bo Λ i E nie przekroczyły progów nawet w szczycie. Liczby i werdykt bez zmian.

@@ -1,5 +1,8 @@
 """Karty twierdzeń README (MAGE-IN-IMAGE-DECODER) dla tools/claim_audit.py.
-Reguły: docs/audit/CLAIM_AUDIT_PREREG.md. Przeliczenia: docs/audit/RECOMPUTE_MAGE.json (recompute_mage.py + cdnet_benchmark).
+Reguły: docs/audit/CLAIM_AUDIT_PREREG.md + aneksy 0 i 1. Przeliczenia: docs/audit/RECOMPUTE_MAGE.json.
+
+v1.1 (po przebiegu 1 i poprawce README): nowe cytaty M2, L0 (+L8), L3, L4, L6 (+L9), T1 (+T5); M5 oparte na historii gita;
+R6 z ujawnieniem; „dowodzi” poprzedzone „nie” pomijane w R7b.
 """
 from __future__ import annotations
 
@@ -88,6 +91,59 @@ def m_loose():
         return Result(SPRZECZNE, "ρ nigdy = 1; maksima Λ/E poniżej progów (RESULT v0.1)",
                       "R12: próg nigdy nieprzekroczony = stała za wysoka (za surowa), nie „za luźna”")
     return R(False, "?", "")
+
+
+def m_high_v11():
+    r = rc()["meta_real"]
+    never = all(v["rho_gt_rate"] == 0 and v["rho_non_gt_rate"] == 0 for v in r.values())
+    below = "NIE PRZEKRACZAJĄ" in src("RESULT_META_DYNAMICS_v0.1.md").replace("\n", " ")
+    return R(never and below, "ρ nigdy = 1; maksima Λ/E poniżej progów (RESULT v0.1)", "R12")
+
+
+def m_untouched_v11():
+    import subprocess
+    out = subprocess.run(["git", "-C", str(REPO), "log", "--format=%h", "1231ba9..HEAD", "--", "RESULT_META_DYNAMICS_v0.1.md",
+                          "real_meta_dynamics_ped2.py", "test_meta_dynamics_ped2_real.py", "data/ucsd_ped2"],
+                         capture_output=True, text=True).stdout.split()
+    erratum_only = all("Erratum" in subprocess.run(["git", "-C", str(REPO), "show", h, "--", "RESULT_META_DYNAMICS_v0.1.md"],
+                                                   capture_output=True, text=True).stdout for h in out)
+    return Result(UDOKUMENTOWANE if (not out or erratum_only) else SPRZECZNE,
+                  f"zmiany po v0.2 (1231ba9) w plikach Test001-003: {out or 'brak'}" + (" (tylko erratum)" if out else ""),
+                  "DOKUMENT + historia gita")
+
+
+def l_ten_v11():
+    m = re.search(r"METHODS = \((.*?)\)", src("cdnet_benchmark.py"), re.S)
+    n = len(re.findall(r'"(\w+)"', m.group(1)))
+    return R(n == 10, f"METHODS: {n}", "KOD")
+
+
+def l_pilot_v11():
+    rr = rerun()
+    up = {s: rr[s]["defect_twist_fusion"]["f1"] - rr[s]["defect"]["f1"] for s in ("pedestrians", "fountain01")}
+    ok = abs(up["pedestrians"] + 0.020) <= 0.0006 and abs(up["fountain01"] - 0.001) <= 0.0006
+    return R(ok, "; ".join(f"{k}: {v:+.4f}" for k, v in up.items()), "SUROWE")
+
+
+def l_rerun_ratio_v11(seqs_, lo, hi):
+    rs = [ratio(s_, "mog2_vector_fusion", "mog2") for s_ in seqs_]
+    return R(all(lo - 0.05 <= round(x, 1) <= hi + 0.05 for x in rs), f"{c(rs[0], 2)}× i {c(rs[1], 2)}×", "powtórka audytu")
+
+
+def l_all_reports_v11():
+    names = [p.stem for p in (REPO / "benchmark_reports").glob("*.json")]
+    ok, bad = f1_equal(["pedestrians", "fountain01", "highway", "canoe"], names)
+    return R(ok, f"raporty: {len(names)}; różnice F1: {bad or 'brak'}", "R8")
+
+
+def t_45_v11():
+    t = rc()["tests"]
+    return R(t["tests_dir"] == 45 and t["tests_i2d_core"] == 22, f"{t['tests_dir']} testów, {t['tests_i2d_core']} w test_i2d_core.py", "R14")
+
+
+def t_23_v11():
+    t = rc()["tests"]
+    return R(t["tests_dir"] - t["tests_i2d_core"] == 23, f"{t['tests_dir'] - t['tests_i2d_core']} pozostałych", "R14")
 
 
 def m_calib():
@@ -256,11 +312,12 @@ def t_n4():
 
 CLAIMS = [
     Claim("M1", "na realnych danych tylko 1 z 3 klipów testowych dał istotny efekt na Λ, a binarna flaga ρ nie zadziałała w ogóle", m_one_of_three),
-    Claim("M2", "(stała progowa `k=3.5` zdiagnozowana jako zbyt luźna)", m_loose),
+    Claim("M2", "(stała progowa `k=3.5` okazała się zbyt wysoka - Λ i E nie przekroczyły progu nawet w szczycie, więc flaga "
+                "nie miała szansy zadziałać)", m_high_v11),
     Claim("M3", "skalibrowało `k=2.0` na osobnym zbiorze (`data/ucsd_ped2_calibration/`, rozłącznym z Test001-003)", m_calib),
     Claim("M4", "`k=2.0` nie ma bezpiecznego marginesu — na innym scenariuszu syntetycznym niż ten użyty w kalibracji fałszywy "
                 "alarm wychodzi dokładnie na granicy progu", m_gate),
-    Claim("M5", "Zgodnie z protokołem stop-if-failed, `Test001-003` NIE zostały ponownie dotknięte", m_untouched),
+    Claim("M5", "Zgodnie z protokołem stop-if-failed, `Test001-003` NIE zostały ponownie dotknięte", m_untouched_v11),
     Claim("M6", "Λ pozostaje częściowym tropem (1 z 3 klipów, niepotwierdzone)", m_partial),
     Claim("M7", "Dashboard pokazuje historyczne `rho` wyłącznie informacyjnie; nie używa go jako zwalidowanego alarmu", m_dashboard_rho),
     Claim("C1", "sekcja 0", c_section0),
@@ -272,18 +329,26 @@ CLAIMS = [
     Claim("D2", "Strona per moduł (wszystkie 7: 5 stabilnych detektorów + META_DYNAMICS + CONTOUR_CURVATURE)", d_modules),
     Claim("D3", "Wgrywane wideo ma limit 300 klatek, 12 mln pikseli łącznie i 20 MB; zbyt duży plik jest odrzucany jawnie, "
                 "a nie po cichu obcinany", d_limits),
-    Claim("L0", "`cdnet_benchmark.py` porównuje na tych samych klatkach trzy maski", l_three),
+    Claim("L0", "`cdnet_benchmark.py` porównuje na tych samych klatkach 10 masek: trzy bazowe", l_ten_v11),
+    Claim("L8", "i 7 wariantów z polem wektorów ruchu", l_ten_v11),
     Claim("L1", "### Laboratorium porównań CDnet 2014", l_title),
     Claim("L2", "piksele z etykietami 0 (tło) lub 255 (ruch), wewnątrz `ROI.bmp`; etykiety 50, 85 i 170 są pomijane", l_labels),
-    Claim("L3", "W tym pilotażu fuzja nie poprawiła wyniku względem pojedynczego detektora", l_pilot),
+    Claim("L3", "W tym pilotażu fuzja nie poprawiła wyniku w praktycznym sensie względem pojedynczego detektora (F1: "
+                "pedestrians −0.020, fountain01 +0.001)", l_pilot_v11),
     Claim("L4", "MOG2 połączony z kierunkowo spójnym ruchem poprawił F1 na obu sekwencjach, lecz był ok. 5–6× wolniejszy od MOG2", l_vector),
+    Claim("L4b", "(czasy zależą od maszyny; w powtórce audytu 4.5–5.5×)",
+          lambda: l_rerun_ratio_v11(["pedestrians", "fountain01"], 4.5, 5.5)),
     Claim("L5", "Sprawdzenie bez zmian progów na dwóch nowych sekwencjach", l_same_thresholds),
     Claim("L6", "F1 rośnie na `highway` i `canoe`, ale metoda nadal jest 3.8–4.0× wolniejsza od MOG2", l_independent),
+    Claim("L6b", "(w powtórce audytu 4.0–4.6×)", lambda: l_rerun_ratio_v11(["highway", "canoe"], 4.0, 4.6)),
+    Claim("L9", "F1 wszystkich raportów CDnet odtwarza się co do 4 miejsc przy ponownym uruchomieniu na surowych klatkach",
+          l_all_reports_v11),
     Claim("L7", "przeliczanie pola co 2 klatki zachowuje prawie cały F1 pełnej fuzji przy około 1.6× krótszym czasie; rzadki "
                 "LK w ROI wyraźnie traci recall", l_roi),
     Claim("V1", "medianą i 90. percentylem jego długości", v_p90),
     Claim("V2", "Na pierwszych 60% zdrowych par kalibruje medianę/MAD, a na pozostałych 40% próg kontrolny", v_split),
-    Claim("T1", "22 testy: import każdego modułu", t_22),
+    Claim("T1", "45 testów, w tym 22 w `tests/test_i2d_core.py`: import każdego modułu", t_45_v11),
+    Claim("T5", "pozostałe 23 dotyczą podobieństwa, CDnet, fuzji/diagnostyki, nakładek stereo i zdrowej referencji", t_23_v11),
     Claim("T2", "11 testów dla META_DYNAMICS v0.1/v0.2 (`test_meta_dynamics_v1.py` — kontrole syntetyczne k=3.5 i k=2.0", t_11),
     Claim("T3", "7 testów dla CONTOUR_CURVATURE v0.1", t_7),
     Claim("T4", "(N=4, za mało na sensowną regresję automatyczną)", t_n4),
@@ -292,9 +357,9 @@ ANCHORS = [("PREREG_META_DYNAMICS_v0.1.md", "RESULT_META_DYNAMICS_v0.1.md"),
            ("PREREG_META_DYNAMICS_RHO_CALIBRATION_v0.1.md", "RESULT_META_DYNAMICS_v0.2.md"),
            ("PREREG_META_DYNAMICS_v0.2.md", "RESULT_META_DYNAMICS_v0.2.md"),
            ("PREREG_CONTOUR_CURVATURE_v0.1.md", "RESULT_CONTOUR_CURVATURE_v0.1.md")]
-ANCHOR_DISCLOSURE = None
+ANCHOR_DISCLOSURE = r"Pre-rejestracje META_DYNAMICS i CONTOUR_CURVATURE trafiły do gita w tych samych commitach"
 COMPLETENESS = [("RESULT_META_DYNAMICS_v0.2.md", r"NOT\s+SUPPORTED", r"NOT SUPPORTED", "RESULT v0.2: ρ NOT SUPPORTED"),
                 ("RESULT_CONTOUR_CURVATURE_v0.1.md", r"CZĘŚCIOWO", r"CZĘŚCIOWO", "RESULT CONTOUR: częściowo")]
 FORBIDDEN = [(r"wykrywa\w*\s+(manipulacj|anomali|splicing)\w*", r"\bnie\b|NIE", "gałęzie eksperymentalne nie są zwalidowanymi detektorami")]
 ABSOLUTE = [(r"\btak samo\b", "podaj różnicę"), (r"\bzawsze\b|\bnigdy\b", "słowo bezwzględne"),
-            (r"\bdowodzi\b|\budowodni\w*", "„dowodzi” wymaga dowodu"), (r"(?<!\d)100 ?%", "sprawdź liczność")]
+            (r"(?<!nie )\bdowodzi\b|\budowodni\w*", "„dowodzi” wymaga dowodu"), (r"(?<!\d)100 ?%", "sprawdź liczność")]

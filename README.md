@@ -115,6 +115,12 @@ potwierdza tylko ich treść, nie historia repozytorium.
 Dashboard pokazuje historyczne `rho` wyłącznie informacyjnie; nie używa
 go jako zwalidowanego alarmu.
 
+**v0.3 — ρ per region (próg osobny dla każdego regionu siatki), wynik: NOT SUPPORTED.**
+Pre-rejestrowana próba naprawy ρ ([`PREREG_META_DYNAMICS_v0.3.md`](PREREG_META_DYNAMICS_v0.3.md)) przeszła bramkę
+syntetyczną i działała na klipach deweloperskich, ale na odłożonych Test006–Test012 nie odróżnia klatek anomalnych od
+normalnych (wykrycie 0.40, alarmy na normalnych 0.46, p = 0.95) —
+[`RESULT_META_DYNAMICS_v0.3.md`](RESULT_META_DYNAMICS_v0.3.md). ρ nadal nie jest zwalidowanym alarmem.
+
 ```python
 from i2d_core import load_video, split_layers
 from meta_dynamics_v1 import compute_reference_thresholds, compute_video_meta_states

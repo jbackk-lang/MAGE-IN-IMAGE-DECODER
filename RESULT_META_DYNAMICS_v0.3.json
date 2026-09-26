@@ -1,0 +1,62 @@
+{
+  "k": 5.0,
+  "per_clip": {
+    "Test006": {
+      "n": 180,
+      "n_gt": 159,
+      "det_gt": 0.7861635220125787,
+      "fa_nongt": 1.0
+    },
+    "Test007": {
+      "n": 180,
+      "n_gt": 135,
+      "det_gt": 1.0,
+      "fa_nongt": 0.24444444444444444
+    },
+    "Test008": {
+      "n": 180,
+      "n_gt": 180,
+      "det_gt": 0.7222222222222222,
+      "fa_nongt": null
+    },
+    "Test009": {
+      "n": 120,
+      "n_gt": 120,
+      "det_gt": 0.025,
+      "fa_nongt": null
+    },
+    "Test010": {
+      "n": 150,
+      "n_gt": 150,
+      "det_gt": 0.02,
+      "fa_nongt": null
+    },
+    "Test011": {
+      "n": 180,
+      "n_gt": 180,
+      "det_gt": 0.044444444444444446,
+      "fa_nongt": null
+    },
+    "Test012": {
+      "n": 180,
+      "n_gt": 93,
+      "det_gt": 0.0,
+      "fa_nongt": 0.4482758620689655
+    }
+  },
+  "pooled": {
+    "det_gt": 0.3972468043264503,
+    "fa_nongt": 0.46405228758169936,
+    "n_gt": 1017,
+    "n_nongt": 153,
+    "fisher_p": 0.9506606540870395,
+    "clips_ok": 1
+  },
+  "criteria": {
+    "det_ge_0.5": false,
+    "fa_le_0.10": false,
+    "fisher_p_lt_0.001": false,
+    "clips_ok_ge_5": false
+  },
+  "verdict": "NOT SUPPORTED"
+}
